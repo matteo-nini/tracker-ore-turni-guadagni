@@ -18,7 +18,7 @@
                     <path d="M12 21V3" />
                     <path d="M19 21V9" />
                 </svg> Tracker Ore Lavoro e Guadagni</h1>
-            <div id="profile-controls">
+            <div id="profile-controls" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
                 <div id="profile-selector-group">
                     <label for="profileSelector"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -53,6 +53,8 @@
                         <circle cx="10" cy="8" r="5" />
                         <circle cx="18" cy="18" r="3" />
                     </svg></button>
+                <button id="payslipBtn" style="margin-bottom:0;display:none;" onclick="openPayslipModal()">Ho ricevuto
+                    la busta paga di <span id="payslipMonthName"></span></button>
             </div>
         </div>
 
@@ -222,13 +224,13 @@
                         <path d="M16 18h.01" />
                     </svg> Storico Turni</h2>
                 <button id="payslipBtn" style="margin-bottom:10px;display:none;" onclick="openPayslipModal()">Ho
-                    ricevuto la busta paga di <span id="payslipMonthName"></span></button>
-                <div class="table-controls">
-                    <span id="saveStatus" style="color: #667eea;">Attendere caricamento...</span>
-                    <select id="monthFilter" onchange="filterData()">
-                        <option value="all">Tutti i mesi</option>
-                    </select>
-                </div>
+                    <!-- Pulsante spostato in alto -->
+                    <div class="table-controls">
+                        <span id="saveStatus" style="color: #667eea;">Attendere caricamento...</span>
+                        <select id="monthFilter" onchange="filterData()">
+                            <option value="all">Tutti i mesi</option>
+                        </select>
+                    </div>
             </div>
 
             <table id="shiftsTable">

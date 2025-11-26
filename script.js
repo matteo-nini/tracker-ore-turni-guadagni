@@ -50,13 +50,17 @@ async function initializeApp() {
     await loadAllData(); 
     
     toggleDataObfuscation(!isLoggedIn);
-    // Imposta lo stato 'pagato' per i turni di ottobre in busta paga
+    // Imposta lo stato 'pagato' per i turni di ottobre in busta paga (solo contrattuali)
     const ottobreKey = '2025-10';
     const processedShifts = getProcessedShifts();
     shifts.forEach((shift, idx) => {
         const proc = processedShifts.find(s => s.date === shift.date && s.start === shift.start && s.end === shift.end && s.notes === shift.notes);
-        if (shift.date.startsWith(ottobreKey) && proc && proc.contractHours > 0) {
-            shift.status = 'pagato';
+        if (shift.date.startsWith(ottobreKey)) {
+            if (proc && proc.contractHours > 0) {
+                shift.status = 'pagato'; // Contrattuali pagati
+            } else if (proc && proc.extraHours > 0) {
+                shift.status = 'da pagare'; // Extra da pagare
+            }
         }
     });
     autoSaveShiftsToServer();
@@ -615,7 +619,7 @@ function updatePayslipButton() {
     const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     const extraToPay = shifts.some(s => s.date.substring(0, 7) === currentMonth && s.extraHours > 0 && s.status !== 'pagato');
     if (isLoggedIn && extraToPay) {
-        payslipBtn.style.display = '';
+        payslipBtn.style.display = 'inline-block';
         document.getElementById('payslipMonthName').textContent = currentMonth;
     } else {
         payslipBtn.style.display = 'none';
@@ -691,7 +695,10 @@ function calculateExtraPaid() {
 // Aggiorna la dashboard con il nuovo calcolo del già pagato
 function updateExtraPaidDisplay() {
     const extraPaid = calculateExtraPaid();
-    document.getElementById('extraPaid').textContent = `€${extraPaid.toFixed(2)}`;
+    const extraPaidElem = document.getElementById('extraPaid');
+    if (extraPaidElem) {
+        extraPaidElem.textContent = `€${extraPaid.toFixed(2)}`;
+    }
 }
 
 function renderTable() {
@@ -731,7 +738,7 @@ function renderTable() {
             const weekRow = tbody.insertRow();
             weekRow.className = 'week-separator';
             const cell = weekRow.insertCell();
-            cell.colSpan = 12; // 11 colonne + 1 Stato
+            cell.colSpan = 11;
             cell.textContent = `Settimana ${week.split('-W')[1]} (${week.split('-W')[0]})`;
             lastWeek = week;
         }
@@ -739,17 +746,14 @@ function renderTable() {
         const date = new Date(shift.date);
         const days = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
         const originalIndex = shifts.findIndex(s => s.date === shift.date && s.start === shift.start && s.end === shift.end && s.notes === shift.notes);
-        let statusHtml = `<span class="shift-status ${shift.status === 'pagato' ? 'paid' : 'unpaid'}">${shift.status}</span>`;
-        // Bottone per cambiare stato solo per extra
-        let payBtn = '';
+        let statusLabel = shift.status === 'pagato' ? 'Pagato' : 'Da pagare';
+        let statusHtml = `<span class="shift-status ${shift.status === 'pagato' ? 'paid' : 'unpaid'}">${statusLabel}</span>`;
+        let actions = [];
         if (shift.extraHours > 0) {
-            payBtn = `<button class="status-btn" onclick="toggleExtraStatus(${originalIndex})"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-receipt-euro-icon lucide-receipt-euro"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M8 12h5"/><path d="M16 9.5a4 4 0 1 0 0 5.2"/></svg> ${shift.status === 'pagato' ? 'Segna da pagare' : 'Segna pagato'}</button>`;
+            actions.push(`<button class="status-btn" onclick="toggleExtraStatus(${originalIndex})"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-receipt-euro-icon lucide-receipt-euro"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M8 12h5"/><path d="M16 9.5a4 4 0 1 0 0 5.2"/></svg> ${shift.status === 'pagato' ? 'Segna da pagare' : 'Segna pagato'}</button>`);
         }
-        const actionsHtml = `
-            ${payBtn}
-            <button class="edit-btn" onclick="openEditModal(${originalIndex})"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square-pen-icon lucide-square-pen"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/></svg> Modifica</button>
-            <button class="delete-btn" onclick="deleteShift(${originalIndex})"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash2-icon lucide-trash-2"><path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Elimina</button>
-        `;
+        actions.push(`<button class="edit-btn" onclick="openEditModal(${originalIndex})"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square-pen-icon lucide-square-pen"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/></svg> Modifica</button>`);
+        actions.push(`<button class="delete-btn" onclick="deleteShift(${originalIndex})"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash2-icon lucide-trash-2"><path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Elimina</button>`);
         row.innerHTML = `
             <td>${date.toLocaleDateString('it-IT')}</td>
             <td>${days[date.getDay()]}</td>
@@ -761,9 +765,14 @@ function renderTable() {
             <td><strong>€${shift.earnings.toFixed(2)}</strong></td>
             <td><span class='notes ${shift.notes === ""? "hidden": ""}'>${shift.notes || ''}</span></td>
             <td>${statusHtml}</td>
-            <td style='display:inline-flex;align-items:center;gap:5px;'>${actionsHtml}</td>
+            <td class="actions-cell" style="text-align:center;">${actions.join(' ')}</td>
         `;
     });
+    updateDashboard();
+    updatePayslipButton();
+    updateExtraPaidDisplay();
+}
+
 // Funzione per cambiare lo stato di pagamento di un turno extra
 function toggleExtraStatus(index) {
     if (!isLoggedIn) return;
@@ -774,11 +783,6 @@ function toggleExtraStatus(index) {
     }
     renderTable();
     autoSaveShiftsToServer();
-}
-
-    updateDashboard();
-    updatePayslipButton();
-    updateExtraPaidDisplay();
 }
 
 function updateDashboard(obfuscated = false) {
@@ -798,46 +802,35 @@ function updateDashboard(obfuscated = false) {
     }
 
     if (obfuscated) {
-        document.getElementById('weekHours').textContent = '---';
-        document.getElementById('monthHours').textContent = '---';
-        document.getElementById('monthEarnings').textContent = '€---';
-        document.getElementById('totalEarnings').textContent = '€---';
-        document.getElementById('totalHours').textContent = '---h';
-        document.getElementById('contractHoursTotal').textContent = '---h';
-        document.getElementById('contractEarnings').textContent = '€--- guadagnati';
-        document.getElementById('extraHoursTotal').textContent = '---h';
-        document.getElementById('extraEarnings').textContent = '€--- guadagnati';
-        document.getElementById('grandTotal').textContent = '€---';
-        document.getElementById('grandTotalHours').textContent = '---h lavorate';
-        document.getElementById('extraPaid').textContent = '€---';
+        const setText = (id, value) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = value;
+        };
+        setText('weekHours', '---');
+        setText('monthHours', '---');
+        setText('monthEarnings', '€---');
+        setText('totalEarnings', '€---');
+        setText('totalHours', '---h');
+        setText('contractHoursTotal', '---h');
+        setText('contractEarnings', '€--- guadagnati');
+        setText('extraHoursTotal', '---h');
+        setText('extraEarnings', '€--- guadagnati');
+        setText('grandTotal', '€---');
+        setText('grandTotalHours', '---h lavorate');
+        setText('extraPaid', '€---');
         return;
     }
     // Aggiorna il già pagato extra
     updateExtraPaidDisplay();
 
     // Calcoli Dashboard Principale
-    const weekHours = processedShifts
-        .filter(s => s.week === currentWeek)
-        .reduce((sum, s) => sum + s.totalHours, 0);
-
-    const monthHours = processedShifts
-        .filter(s => s.date.startsWith(currentMonth))
-        .reduce((sum, s) => sum + s.totalHours, 0);
-
-    // Guadagno totale
-    const totalEarnings = processedShifts
-        .reduce((sum, s) => sum + s.earnings, 0);
-
-    // Guadagno mese corrente
-    const monthEarnings = processedShifts
-        .filter(s => s.date.startsWith(currentMonth))
-        .reduce((sum, s) => sum + s.earnings, 0);
-
-
-    // ...existing code...
-
-    // Calcolo da dare/da avere (ora con variabili già calcolate)
-    const extraPaid = parseFloat(SETTINGS.EXTRA_PAID) || 0;
+    const weekHours = processedShifts.filter(s => s.week === currentWeek).reduce((sum, s) => sum + s.totalHours, 0);
+    const monthContractHours = processedShifts.filter(s => s.date.startsWith(currentMonth)).reduce((sum, s) => sum + s.contractHours, 0);
+    const monthExtraHours = processedShifts.filter(s => s.date.startsWith(currentMonth)).reduce((sum, s) => sum + s.extraHours, 0);
+    const monthContractEarnings = monthContractHours * contractRate;
+    const monthExtraEarnings = monthExtraHours * SETTINGS.EXTRA_RATE;
+    const monthExtraPaid = processedShifts.filter(s => s.date.startsWith(currentMonth) && s.extraHours > 0 && s.status === 'pagato').reduce((sum, s) => sum + s.extraHours * SETTINGS.EXTRA_RATE, 0);
+    const monthExtraToGive = monthExtraEarnings - monthExtraPaid;
 
     // Mostra input solo se loggato
     const extraPaidInput = document.getElementById('extraPaidInput');
@@ -845,7 +838,7 @@ function updateDashboard(obfuscated = false) {
     if (isLoggedIn) {
         extraPaidInput.style.display = '';
         saveExtraPaidBtn.style.display = '';
-        extraPaidInput.value = extraPaid;
+        extraPaidInput.value = monthExtraPaid;
         if (document.getElementById('extraPaidHelp')) {
             document.getElementById('extraPaidHelp').style.display = '';
         }
@@ -857,61 +850,55 @@ function updateDashboard(obfuscated = false) {
         }
     }
 
-    // Calcoli Riepilogo Dettagliato
+    // Aggiornamento Dashboard Principale
+    const setText = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value;
+    };
+    setText('weekHours', weekHours.toFixed(2));
+    setText('monthHours', (monthContractHours + monthExtraHours).toFixed(2));
+    setText('monthContractEarnings', `€${monthContractEarnings.toFixed(2)}`);
+    setText('monthExtraEarnings', `€${monthExtraEarnings.toFixed(2)}`);
+    setText('monthExtraPaid', `€${monthExtraPaid.toFixed(2)}`);
+    setText('monthExtraToGive', `€${monthExtraToGive.toFixed(2)}`);
+
+    // Aggiorna nome mese
+    const monthNames = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
+    setText('monthName', `${monthNames[now.getMonth()]} ${now.getFullYear()}`);
+    const payslipMonthName = document.getElementById('payslipMonthName');
+    if (payslipMonthName) payslipMonthName.textContent = `${monthNames[now.getMonth()]} ${now.getFullYear()}`;
+    const payslipBtn = document.getElementById('payslipBtn');
+    if (payslipBtn) payslipBtn.style.display = isLoggedIn ? '' : 'none';
+
+    // Riepilogo dettagliato
     let totalContractHours = 0;
     let totalExtraHours = 0;
-    
     let filteredShifts;
     if (detailView === 'total') {
         filteredShifts = processedShifts;
     } else if (detailView === 'custom') {
-        const filterMonth = selectedDetailMonth === 'current' ? currentMonth : selectedDetailMonth;
-        filteredShifts = processedShifts.filter(s => s.date.startsWith(filterMonth));
-    } else { // default: month (Mese Corrente)
+        filteredShifts = processedShifts.filter(s => s.date.startsWith(selectedDetailMonth));
+    } else {
         filteredShifts = processedShifts.filter(s => s.date.startsWith(currentMonth));
     }
-    
-    // Aggiornamento dei totali
     filteredShifts.forEach(shift => {
         totalContractHours += shift.contractHours;
         totalExtraHours += shift.extraHours;
     });
-
     const totalHours = totalContractHours + totalExtraHours;
-
-    // Calcolo guadagni Contrattuali ed Extra per la sezione Dettaglio (per visualizzazione separata)
     const totalContractEarnings = totalContractHours * contractRate;
     const totalExtraEarnings = totalExtraHours * SETTINGS.EXTRA_RATE;
     const totalDetailEarnings = totalContractEarnings + totalExtraEarnings;
-    const extraToGive = totalExtraEarnings - extraPaid;
-
-
-    // Aggiornamento Dashboard Principale - ORA CON DUE DECIMALi
-    document.getElementById('weekHours').textContent = weekHours.toFixed(2);
-    document.getElementById('monthHours').textContent = monthHours.toFixed(2);
-    document.getElementById('monthEarnings').textContent = `€${monthEarnings.toFixed(2)}`;
-    document.getElementById('totalEarnings').textContent = `€${totalEarnings.toFixed(2)}`;
-    document.getElementById('extraPaid').textContent = `€${extraPaid.toFixed(2)}`;
-    document.getElementById('extraToGive').textContent = `€${extraToGive.toFixed(2)}`;
-
-    const monthNames = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
-        'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
-    document.getElementById('monthName').textContent = `${monthNames[now.getMonth()]} ${now.getFullYear()}`;
-        // Aggiorna il nome mese nel bottone busta paga
-        const payslipMonthName = document.getElementById('payslipMonthName');
-        if (payslipMonthName) payslipMonthName.textContent = `${monthNames[now.getMonth()]} ${now.getFullYear()}`;
-        // Mostra/nascondi il bottone busta paga solo se loggato
-        const payslipBtn = document.getElementById('payslipBtn');
-        if (payslipBtn) payslipBtn.style.display = isLoggedIn ? '' : 'none';
-    
-    // Aggiornamento Riepilogo Dettagliato - ORA CON DUE DECIMALi
-    document.getElementById('totalHours').textContent = `${totalHours.toFixed(2)}h`;
-    document.getElementById('contractHoursTotal').textContent = `${totalContractHours.toFixed(2)}h`;
-    document.getElementById('contractEarnings').textContent = `€${totalContractEarnings.toFixed(2)} guadagnati`;
-    document.getElementById('extraHoursTotal').textContent = `${totalExtraHours.toFixed(2)}h`;
-    document.getElementById('extraEarnings').textContent = `€${totalExtraEarnings.toFixed(2)} guadagnati`;
-    document.getElementById('grandTotal').textContent = `€${totalDetailEarnings.toFixed(2)}`;
-    document.getElementById('grandTotalHours').textContent = `${totalHours.toFixed(2)}h lavorate`;
+    const extraToGive = totalExtraEarnings - monthExtraPaid;
+    setText('totalHours', `${totalHours.toFixed(2)}h`);
+    setText('contractHoursTotal', `${totalContractHours.toFixed(2)}h`);
+    setText('contractEarnings', `€${totalContractEarnings.toFixed(2)} guadagnati`);
+    setText('extraHoursTotal', `${totalExtraHours.toFixed(2)}h`);
+    setText('extraEarnings', `€${totalExtraEarnings.toFixed(2)} guadagnati`);
+    setText('grandTotal', `€${totalDetailEarnings.toFixed(2)}`);
+    setText('grandTotalHours', `${totalHours.toFixed(2)}h lavorate`);
+    setText('extraPaid', `€${monthExtraPaid.toFixed(2)}`);
+    setText('extraToGive', `€${extraToGive.toFixed(2)}`);
 }
 
 function saveExtraPaid() {
@@ -925,33 +912,27 @@ function saveExtraPaid() {
 function populateMonthFilter() {
     const monthFilter = document.getElementById('monthFilter');
     const detailMonthFilter = document.getElementById('detailMonthFilter');
-
-    // Rimuovi vecchie opzioni (tranne "Tutti i mesi" / "Mese Corrente")
-    while (monthFilter.options.length > 1) {
-        monthFilter.remove(1);
-    }
-    while (detailMonthFilter.options.length > 1) {
-        detailMonthFilter.remove(1);
-    }
-
+    while (monthFilter.options.length > 1) monthFilter.remove(1);
+    while (detailMonthFilter.options.length > 0) detailMonthFilter.remove(0);
     const months = new Set();
-    shifts.forEach(shift => {
-        months.add(shift.date.substring(0, 7));
-    });
-
+    shifts.forEach(shift => months.add(shift.date.substring(0, 7)));
     const sortedMonths = Array.from(months).sort().reverse();
-    const monthNames = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
-        'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
-
+    const monthNames = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
+    const now = new Date();
+    const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const currentMonthName = `${monthNames[now.getMonth()]} ${now.getFullYear()}`;
+    const optionCurrent = document.createElement('option');
+    optionCurrent.value = currentMonthKey;
+    optionCurrent.textContent = currentMonthName;
+    detailMonthFilter.appendChild(optionCurrent);
     sortedMonths.forEach(monthKey => {
+        if (monthKey === currentMonthKey) return;
         const [year, monthIndex] = monthKey.split('-').map(Number);
         const monthName = `${monthNames[monthIndex - 1]} ${year}`;
-
         const optionTable = document.createElement('option');
         optionTable.value = monthKey;
         optionTable.textContent = monthName;
         monthFilter.appendChild(optionTable);
-
         const optionDetail = document.createElement('option');
         optionDetail.value = monthKey;
         optionDetail.textContent = monthName;
@@ -967,30 +948,15 @@ function setDetailView(view) {
     const btnTotal = document.getElementById('btnTotal');
     const select = document.getElementById('detailMonthFilter');
     const allDetailButtons = document.querySelectorAll('.detail-controls button');
-
-    // Reset stile per tutti i bottoni
     allDetailButtons.forEach(btn => btn.classList.add('btn-secondary-style'));
-
     if (view === 'total') {
         detailView = 'total';
         btnTotal.classList.remove('btn-secondary-style');
-        select.value = 'current'; // Reset del selettore
-    } else { // 'custom' (o implicito 'month' se selezionato un mese specifico)
+        select.selectedIndex = 0;
+    } else {
         detailView = 'custom';
         selectedDetailMonth = select.value;
-        
-        // Evidenzia il selettore se non è su 'current'
-        if (select.value !== 'current') {
-            // Non c'è un bottone per il mese specifico, ma deve essere chiaro
-            // Che il filtro è attivo. Manteniamo il bottone "Totale" come secondario.
-        }
     }
-    
-    // Se la vista è 'custom' e il valore è 'current', allora la vista è 'month'
-    if (detailView === 'custom' && selectedDetailMonth === 'current') {
-        detailView = 'month';
-    }
-
     updateDashboard();
 }
 
@@ -1046,8 +1012,6 @@ async function saveSettings() {
     renderTable();
     updateDashboard();
 }
-
-initializeApp();
 
 // --- Funzioni Busta Paga ---
 function openPayslipModal() {
