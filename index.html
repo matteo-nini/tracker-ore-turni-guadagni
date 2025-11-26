@@ -6,6 +6,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tracker Ore Lavoro</title>
     <link rel="stylesheet" href="styles.css">
+    <script type="module" src="./js/profiles.js"></script>
+    <script type="module" src="./js/shifts.js"></script>
+    <script type="module" src="./js/dashboard.js"></script>
+    <script type="module" src="./js/utils.js"></script>
+    <script type="module" src="./js/modals.js"></script>
+    <script type="module" src="script.js"></script>
 </head>
 
 <body onload="initializeApp()">
@@ -72,33 +78,26 @@
             </div>
 
             <div class="card">
-                <h3>Guadagno Mese</h3>
-                <div class="value" id="monthEarnings">€0</div>
-                <div class="subtitle">Contratto + Extra</div>
+                <h3>Guadagno Mese in Busta</h3>
+                <div class="value" id="monthContractEarnings">€0</div>
+                <div class="subtitle">Contrattuali</div>
             </div>
 
             <div class="card">
-                <h3>Totale Guadagnato</h3>
-                <div class="value" id="totalEarnings">€0</div>
-                <div class="subtitle">Dall'inizio contratto</div>
+                <h3>Guadagno Mese Extra</h3>
+                <div class="value" id="monthExtraEarnings">€0</div>
+                <div class="subtitle">Solo Extra</div>
             </div>
 
             <div class="card">
-                <h3>Già pagato Extra</h3>
-                <div class="value" id="extraPaid">€0</div>
-                <div class="subtitle">
-                    <input type="number" id="extraPaidInput" min="0" step="0.01" style="width:120px;display:none;"
-                        placeholder="Inserisci € pagato">
-                    <button id="saveExtraPaidBtn" style="display:none;" onclick="saveExtraPaid()">Salva</button>
-                    <div id="extraPaidHelp" style="font-size:0.95em;color:#475569;margin-top:6px;display:none;">
-                        Inserisci qui quanto ti è già stato pagato per gli extra. Il sistema calcolerà la differenza tra
-                        extra maturati e già pagato.</div>
-                </div>
+                <h3>Già pagato mese Extra</h3>
+                <div class="value" id="monthExtraPaid">€0</div>
+                <div class="subtitle">Calcolato automaticamente</div>
             </div>
 
             <div class="card">
-                <h3>Da dare/Da avere Extra</h3>
-                <div class="value" id="extraToGive">€0</div>
+                <h3>Da avere mese Extra</h3>
+                <div class="value" id="monthExtraToGive">€0</div>
                 <div class="subtitle">Extra maturati - già pagato</div>
             </div>
         </div>
