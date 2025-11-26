@@ -1,5 +1,6 @@
+
 // --- CONSTANTI E STATO GLOBALE ---
-let PROFILES = [];
+let PROFILES = []; // Caricato da profiles.json
 let currentProfileId = null;
 let isLoggedIn = false; // Stato di protezione
 
@@ -10,15 +11,14 @@ let SETTINGS = {
     WEEKLY_HOURS: 18,
     OCTOBER_HOURS: 32.4, // Ore di riferimento da busta paga
     OCTOBER_PAYOUT: 300, // Paga netta di riferimento da busta paga
-    EXTRA_RATE: 10,
-    EXTRA_PAID: 0 // Nuovo campo: già pagato sugli extra
+    EXTRA_RATE: 10
 };
 
 // --- CONFIGURAZIONE SERVER ---
-const PROFILES_FILE_PATH = 'profiles/profiles.json';
-const MANAGE_PROFILES_SCRIPT_PATH = 'php/manage_profiles.php';
-const SAVE_SHIFTS_SCRIPT_PATH = 'php/save_shifts.php';
-const SAVE_SETTINGS_SCRIPT_PATH = 'php/save_settings.php';
+const PROFILES_FILE_PATH = 'profiles.json';
+const MANAGE_PROFILES_SCRIPT_PATH = 'manage_profiles.php';
+const SAVE_SHIFTS_SCRIPT_PATH = 'save_shifts.php';
+const SAVE_SETTINGS_SCRIPT_PATH = 'save_settings.php';
 
 let detailView = 'month';
 let selectedDetailMonth = 'current';
@@ -49,25 +49,8 @@ async function initializeApp() {
     // Carica i dati e aggiorna la UI, che applicherà l'oscuramento se non loggato
     await loadAllData(); 
     
+    // Aggiunge la classe di oscuramento al body se non loggato
     toggleDataObfuscation(!isLoggedIn);
-    // Imposta lo stato 'pagato' per i turni contrattuali di ottobre, 'da pagare' per gli extra
-    const ottobreKey = '2025-10';
-    const processedShifts = getProcessedShifts();
-    shifts.forEach((shift, idx) => {
-        if (shift.date.startsWith(ottobreKey)) {
-            const proc = processedShifts.find(s => s.date === shift.date && s.start === shift.start && s.end === shift.end && s.notes === shift.notes);
-            if (proc) {
-                if (proc.contractHours > 0) {
-                    shift.status = 'pagato'; // Contrattuali pagati
-                } else if (proc.extraHours > 0) {
-                    shift.status = 'da pagare'; // Extra da pagare
-                } else {
-                    shift.status = 'da pagare'; // Default
-                }
-            }
-        }
-    });
-    autoSaveShiftsToServer();
 }
 
 // Funzione per oscurare/mostrare i dati nel body
@@ -75,10 +58,12 @@ function toggleDataObfuscation(obfuscate) {
     const body = document.body;
     if (obfuscate) {
         body.classList.add('data-obfuscated');
+        // Nasconde esplicitamente la tabella e l'input turni
         document.querySelector('.table-section').style.display = 'none';
         document.querySelector('.input-section').style.display = 'none';
     } else {
         body.classList.remove('data-obfuscated');
+        // Mostra esplicitamente la tabella e l'input turni
         document.querySelector('.table-section').style.display = '';
         document.querySelector('.input-section').style.display = '';
     }
@@ -102,6 +87,50 @@ async function loadProfilesList() {
     populateProfileSelector();
 }
 
+function populateProfileSelector() {
+    const selector = document.getElementById('profileSelector');
+    selector.innerHTML = '';
+    
+    if (PROFILES.length === 0) {
+        selector.innerHTML = '<option value="">Nessun Profilo</option>';
+        return;
+    }
+    
+    PROFILES.forEach(p => {
+        const option = document.createElement('option');
+        option.value = p.id;
+        // Rimosso l'emoji ✅
+        option.textContent = p.name + (currentProfileId === p.id && isLoggedIn ? "" : " (offline)"); 
+        selector.appendChild(option);
+    });
+    
+    // Seleziona il profilo corrente dopo aver popolato
+    if (currentProfileId) {
+        selector.value = currentProfileId;
+    }
+}
+
+function saveProfilesList() {
+    fetch(MANAGE_PROFILES_SCRIPT_PATH, {
+        method: 'POST',
+        body: JSON.stringify(PROFILES),
+        headers: { 'Content-Type': 'application/json' }
+    }).then(response => {
+        if (!response.ok) throw new Error('Errore salvataggio lista profili');
+        console.log('Lista profili salvata.');
+    }).catch(error => console.error(error.message));
+}
+
+function changeProfile() {
+    const newProfileId = document.getElementById('profileSelector').value;
+    if (newProfileId && newProfileId !== currentProfileId) {
+        // Reindirizza forzando il login
+        window.location.href = `?profile=${newProfileId}`;
+    } else {
+        closeModal('loginModal');
+    }
+}
+
 // --- Funzioni di Sicurezza (PIN) ---
         
 function sanitizeId(name) {
@@ -117,11 +146,8 @@ function openLoginModal(isSwitch = true) {
     const selectedId = document.getElementById('profileSelector').value;
     const profile = PROFILES.find(p => p.id === selectedId);
 
-    if (!profile) {
-        console.error('Profilo non trovato.');
-        return;
-    }
-
+    if (!profile) return;
+    
     // Se siamo già loggati sul profilo corretto, chiudi il modal
     if (currentProfileId === selectedId && isLoggedIn) {
         closeModal('loginModal');
@@ -134,14 +160,6 @@ function openLoginModal(isSwitch = true) {
     document.getElementById('loginPIN').focus();
 
     document.getElementById('tempProfileId').value = selectedId;
-
-    // Aggiungi event listener per Enter
-    const pinInput = document.getElementById('loginPIN');
-    pinInput.onkeydown = function(e) {
-        if (e.key === 'Enter') {
-            attemptLogin();
-        }
-    };
 }
 
 function attemptLogin() {
@@ -155,10 +173,18 @@ function attemptLogin() {
         isLoggedIn = true;
         currentProfileId = selectedId;
         closeModal('loginModal');
+        
         // Rimuove l'oscuramento dopo il login
         toggleDataObfuscation(false);
+
+        // Aggiorna l'URL
+        if (window.location.search.indexOf('profile=') === -1 || window.location.search.indexOf(`profile=${currentProfileId}`) === -1) {
+            window.history.pushState({}, '', `?profile=${currentProfileId}`);
+        }
+
         populateProfileSelector(); // Mostra lo stato di connessione
-        loadAllData(); // Ricarica i dati con le credenziali corrette e aggiorna dashboard
+        loadAllData(); // Ricarica i dati con le credenziali corrette
+        
     } else {
         document.getElementById('loginMessage').textContent = 'PIN errato. Riprova.';
         document.getElementById('loginPIN').value = '';
@@ -220,39 +246,31 @@ async function createNewProfile() {
 async function loadAllData() {
     await loadSettingsFromServer();
     await loadShiftsFromServer();
-    updateDashboard(); // Forza aggiornamento dashboard dopo caricamento dati
 }
 
 async function loadShiftsFromServer() {
     const status = document.getElementById('saveStatus');
     status.textContent = 'Caricamento turni...';
-    if (!currentProfileId) {
-        console.warn("ID profilo corrente non impostato. Impossibile caricare i turni.");
-        return;
-    }
+    if (!currentProfileId) return;
 
-    const CSV_FILE_PATH = `profiles/${currentProfileId}/shifts.csv`;
+    const CSV_FILE_PATH = `${currentProfileId}_shifts.csv`;
     // Cache Busting
     const cacheBusterUrl = `${CSV_FILE_PATH}?t=${new Date().getTime()}`;
-
+    
     try {
-        console.log(`Tentativo di caricamento turni da: ${cacheBusterUrl}`);
         const response = await fetch(cacheBusterUrl);
         if (!response.ok) {
             if (response.status === 404) {
                 shifts = [];
                 status.textContent = `Nessun turno trovato per ${currentProfileId}. Pronto.`;
-                console.warn(`File turni non trovato per il profilo ${currentProfileId}.`);
                 return;
             }
             throw new Error(`Errore HTTP: ${response.status}`);
         }
         const csvText = await response.text();
-        console.log("Contenuto CSV ricevuto:", csvText);
         parseCSV(csvText);
         status.textContent = 'Turni caricati con successo.';
     } catch (error) {
-        console.error('Errore durante il caricamento dei turni:', error);
         status.textContent = `Errore di caricamento turni: ${error.message}.`;
         shifts = [];
     } finally {
@@ -304,7 +322,7 @@ async function autoSaveShiftsToServer() {
 
 async function loadSettingsFromServer() {
     if (!currentProfileId) return;
-    const SETTINGS_FILE_PATH = `profiles/${currentProfileId}/settings.json`;
+    const SETTINGS_FILE_PATH = `${currentProfileId}_settings.json`;
     const cacheBusterUrl = `${SETTINGS_FILE_PATH}?t=${new Date().getTime()}`;
     
     try {
@@ -366,6 +384,43 @@ async function saveSettingsToServer() {
 
 // --- Funzioni Turni (add/delete/edit) ---
 
+function parseCSV(csvText) {
+    const normalizedText = csvText.trim().replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    const lines = normalizedText.split('\n').filter(line => line.trim() !== '');
+
+    const newShifts = [];
+
+    for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        const parts = line.split(',');
+        // Ora si aspetta almeno 3 parti. Se ce ne sono 4, prende l'ultima come notes.
+        if (parts.length >= 3) {
+            // Usa il destructuring con un valore predefinito per 'notes' per gestire vecchi CSV
+            const [date, start, end, notes = ''] = parts; 
+            newShifts.push({
+                date: date.trim(),
+                start: start.trim(),
+                end: end.trim(),
+                notes: notes.trim() // NUOVO CAMPO
+            });
+        } else {
+            console.warn(`Riga CSV saltata o non valida: ${line}`);
+        }
+    }
+    shifts = newShifts;
+}
+
+function generateCSV() {
+    // Aggiorna l'intestazione per includere "Note"
+    let csv = 'Data,Entrata,Uscita,Note\n'; 
+    const sortedShifts = [...shifts].sort((a, b) => new Date(a.date) - new Date(b.date));
+    sortedShifts.forEach(shift => {
+        // Aggiunge shift.notes al CSV
+        csv += `${shift.date},${shift.start},${shift.end},${shift.notes || ''}\n`; 
+    });
+    return csv;
+}
+
 function addShift() {
     if (!isLoggedIn) {
         alert("Devi effettuare l'accesso (PIN) per aggiungere un turno.");
@@ -381,7 +436,7 @@ function addShift() {
         return;
     }
 
-    shifts.push({ date, start, end, notes, status: 'da pagare' }); // Include notes e stato
+    shifts.push({ date, start, end, notes }); // Include notes
     
     document.getElementById('newDate').value = '';
     document.getElementById('newStart').value = '';
@@ -423,6 +478,10 @@ function openEditModal(originalIndex) {
     document.getElementById('editNotes').value = shiftToEdit.notes || ''; // NUOVO CAMPO
 
     document.getElementById('editModal').style.display = 'flex';
+}
+
+function closeModal(id) {
+    document.getElementById(id).style.display = 'none';
 }
 
 function saveEdit() {
@@ -540,111 +599,120 @@ function getProcessedShifts() {
 }
 
 
-// --- MODULO: Gestione Profili ---
+// --- Funzioni UI ---
 
-function populateProfileSelector() {
-    const selector = document.getElementById('profileSelector');
-    selector.innerHTML = '';
-    if (!PROFILES || PROFILES.length === 0) {
-        selector.innerHTML = '<option value="">Nessun Profilo</option>';
-        return;
-    }
-    PROFILES.forEach(p => {
-        const option = document.createElement('option');
-        option.value = p.id;
-        option.textContent = p.name + (currentProfileId === p.id && isLoggedIn ? "" : " (offline)"); 
-        selector.appendChild(option);
-    });
-    if (currentProfileId) {
-        selector.value = currentProfileId;
-    }
-}
-
-function saveProfilesList() {
-    fetch(MANAGE_PROFILES_SCRIPT_PATH, {
-        method: 'POST',
-        body: JSON.stringify(PROFILES),
-        headers: { 'Content-Type': 'application/json' }
-    }).then(response => {
-        if (!response.ok) throw new Error('Errore salvataggio lista profili');
-        console.log('Lista profili salvata.');
-    }).catch(error => console.error(error.message));
-}
-
-function changeProfile() {
-    const newProfileId = document.getElementById('profileSelector').value;
-    if (newProfileId && newProfileId !== currentProfileId) {
-        // Reindirizza forzando il login
-        window.location.href = `?profile=${newProfileId}`;
-    } else {
-        closeModal('loginModal');
-    }
-}
-
-// --- MODULO: Gestione Turni ---
-
-// Funzione per visualizzare i turni nella tabella
 function renderTable() {
     const monthFilter = document.getElementById('monthFilter').value;
     const tbody = document.getElementById('shiftsBody');
     tbody.innerHTML = '';
-
+    
+    // 1. Ottieni l'array di turni pre-elaborati (con lo split corretto)
     const processedShifts = getProcessedShifts();
 
+    // L'elemento "contractualHoursSubtitle" dovrebbe esistere nel tuo HTML
+    const subtitleElement = document.getElementById('contractualHoursSubtitle');
+    if (subtitleElement) {
+        subtitleElement.textContent = `di ${SETTINGS.WEEKLY_HOURS} ore contrattuali`;
+    }
+
+    if (shifts.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 20px;">Nessun turno. Inizia ad aggiungerne uno.</td></tr>'; // Aggiornato colspan a 10
+        updateDashboard();
+        return;
+    }
+    
+    // Se non loggato, mostra un messaggio di avviso
+    if (!isLoggedIn) {
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 20px; color: #dc3545; font-weight: bold;">Accedi con il PIN per visualizzare e modificare lo storico dei turni.</td></tr>'; // Aggiornato colspan a 10
+        updateDashboard(true); // Aggiorna la dashboard ma con dati oscurati
+        return;
+    }
+
     const filteredShifts = monthFilter === 'all' ? processedShifts :
-        processedShifts.filter(s => s.date.startsWith(monthFilter));
+        processedShifts.filter(s => s.date.substring(0, 7) === monthFilter);
 
     let lastWeek = null;
 
     filteredShifts.forEach((shift, index) => {
-        const week = shift.week;
+        const week = shift.week; // Usa la settimana calcolata
 
         if (week !== lastWeek) {
             const weekRow = tbody.insertRow();
             weekRow.className = 'week-separator';
             const cell = weekRow.insertCell();
-            cell.colSpan = 10;
+            cell.colSpan = 10; // AGGIORNATO: 9 colonne originali + 1 Note = 10
             cell.textContent = `Settimana ${week.split('-W')[1]} (${week.split('-W')[0]})`;
             lastWeek = week;
         }
 
-        const row = tbody.insertRow();
+        // CORREZIONE TECNICA: Utilizza insertRow() per creare una riga.
+        const row = tbody.insertRow(); 
         const date = new Date(shift.date);
         const days = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
 
+        // Trova l'indice nel file RAW per l'azione di DELETE/EDIT (necessario per l'array 'shifts')
         const originalIndex = shifts.findIndex(s => s.date === shift.date && s.start === shift.start && s.end === shift.end && s.notes === shift.notes);
 
+        // Azioni disponibili solo se loggato
         const actionsHtml = `
-            <button class="edit-btn" onclick="openEditModal(${originalIndex})">Modifica</button>
-            <button class="delete-btn" onclick="deleteShift(${originalIndex})">Elimina</button>
+            <button class="edit-btn" onclick="openEditModal(${originalIndex})"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square-pen-icon lucide-square-pen"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/></svg> Modifica</button>
+            <button class="delete-btn" onclick="deleteShift(${originalIndex})"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash2-icon lucide-trash-2"><path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Elimina</button>
         `;
 
+        // INSERIMENTO DELLA NUOVA COLONNA "Note"
         row.innerHTML = `
             <td>${date.toLocaleDateString('it-IT')}</td>
             <td>${days[date.getDay()]}</td>
             <td>${shift.start}</td>
             <td>${shift.end}</td>
-            <td>${shift.totalHours.toFixed(2)}h</td>
-            <td>${shift.contractHours.toFixed(2)}h</td>
-            <td>${shift.extraHours.toFixed(2)}h</td>
-            <td>€${shift.earnings.toFixed(2)}</td>
-            <td>${shift.notes || ''}</td>
-            <td>${actionsHtml}</td>
+            <td><strong>${shift.totalHours.toFixed(2)}h</strong></td>
+            <td class="contract-hours">${shift.contractHours.toFixed(2)}h</td>
+            <td class="extra-hours">${shift.extraHours.toFixed(2)}h</td>
+            <td><strong>€${shift.earnings.toFixed(2)}</strong></td>
+            <td><span class='notes ${shift.notes === ""? "hidden": ""}'>${shift.notes || ''}</span></td> <td style='display:inline-flex;align-items:center;gap:5px;'>${actionsHtml}</td>
         `;
     });
 
     updateDashboard();
 }
 
-// --- MODULO: Gestione Dashboard ---
-function updateDashboard() {
+function updateDashboard(obfuscated = false) {
     const now = new Date();
     const currentWeek = getWeekNumber(now);
     const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-
+    
+    // 1. Ottieni l'array di turni pre-elaborati
     const processedShifts = getProcessedShifts();
+    
+    // Calcola il tasso orario contrattuale (per trasparenza)
+    const contractRate = SETTINGS.OCTOBER_HOURS > 0 ? (SETTINGS.OCTOBER_PAYOUT / SETTINGS.OCTOBER_HOURS) : SETTINGS.EXTRA_RATE;
+    
+    // AGGIUNTA SICUREZZA: Aggiorna solo se l'elemento esiste
+    const rateDisplay = document.getElementById('calculatedRate');
+    if (rateDisplay) {
+        rateDisplay.textContent = contractRate.toFixed(4); // Mostra 4 decimali
+    }
 
-    // Calcolo ore e guadagni per la settimana corrente
+
+    if (obfuscated) {
+        // Se oscurato, imposta tutti i valori a placeholder
+        document.getElementById('weekHours').textContent = '---';
+        document.getElementById('monthHours').textContent = '---';
+        document.getElementById('monthEarnings').textContent = '€---';
+        document.getElementById('totalEarnings').textContent = '€---';
+        
+        // Riepilogo Dettagliato
+        document.getElementById('totalHours').textContent = '---h';
+        document.getElementById('contractHoursTotal').textContent = '---h';
+        document.getElementById('contractEarnings').textContent = '€--- guadagnati';
+        document.getElementById('extraHoursTotal').textContent = '---h';
+        document.getElementById('extraEarnings').textContent = '€--- guadagnati';
+        document.getElementById('grandTotal').textContent = '€---';
+        document.getElementById('grandTotalHours').textContent = '---h lavorate';
+        return;
+    }
+
+    // Calcoli Dashboard Principale
     const weekHours = processedShifts
         .filter(s => s.week === currentWeek)
         .reduce((sum, s) => sum + s.totalHours, 0);
@@ -656,69 +724,54 @@ function updateDashboard() {
     const totalEarnings = processedShifts
         .reduce((sum, s) => sum + s.earnings, 0);
 
-    const contractHours = processedShifts
-        .filter(s => s.date.startsWith(currentMonth))
-        .reduce((sum, s) => sum + s.contractHours, 0);
-
-    const extraEarnings = processedShifts
-        .filter(s => s.date.startsWith(currentMonth))
-        .reduce((sum, s) => sum + s.extraHours * SETTINGS.EXTRA_RATE, 0);
-
-    // Aggiornamento dashboard con controllo sugli elementi
-    const weekHoursElement = document.getElementById('weekHours');
-    if (weekHoursElement) {
-        weekHoursElement.textContent = weekHours.toFixed(2);
+    // Calcoli Riepilogo Dettagliato
+    let totalContractHours = 0;
+    let totalExtraHours = 0;
+    
+    let filteredShifts;
+    if (detailView === 'total') {
+        filteredShifts = processedShifts;
+    } else if (detailView === 'custom') {
+        const filterMonth = selectedDetailMonth === 'current' ? currentMonth : selectedDetailMonth;
+        filteredShifts = processedShifts.filter(s => s.date.startsWith(filterMonth));
+    } else { // default: month (Mese Corrente)
+        filteredShifts = processedShifts.filter(s => s.date.startsWith(currentMonth));
     }
+    
+    // Aggiornamento dei totali
+    filteredShifts.forEach(shift => {
+        totalContractHours += shift.contractHours;
+        totalExtraHours += shift.extraHours;
+    });
 
-    const monthHoursElement = document.getElementById('monthHours');
-    if (monthHoursElement) {
-        monthHoursElement.textContent = monthHours.toFixed(2);
-    }
+    const totalHours = totalContractHours + totalExtraHours;
 
-    const monthEarningsElement = document.getElementById('monthEarnings');
-    if (monthEarningsElement) {
-        monthEarningsElement.textContent = `€${totalEarnings.toFixed(2)}`;
-    }
+    // Calcolo guadagni Contrattuali ed Extra per la sezione Dettaglio (per visualizzazione separata)
+    const totalContractEarnings = totalContractHours * contractRate;
+    const totalExtraEarnings = totalExtraHours * SETTINGS.EXTRA_RATE;
+    const totalDetailEarnings = totalContractEarnings + totalExtraEarnings;
 
-    const contractHoursElement = document.getElementById('contractHoursTotal');
-    if (contractHoursElement) {
-        contractHoursElement.textContent = `${contractHours.toFixed(2)}h`;
-    }
 
-    const extraEarningsElement = document.getElementById('extraEarnings');
-    if (extraEarningsElement) {
-        extraEarningsElement.textContent = `€${extraEarnings.toFixed(2)}`;
-    }
+    // Aggiornamento Dashboard Principale - ORA CON DUE DECIMALi
+    document.getElementById('weekHours').textContent = weekHours.toFixed(2);
+    document.getElementById('monthHours').textContent = monthHours.toFixed(2);
+    document.getElementById('monthEarnings').textContent = `€${totalEarnings.toFixed(2)}`; 
+    document.getElementById('totalEarnings').textContent = `€${totalEarnings.toFixed(2)}`;
 
-    const rateDisplay = document.getElementById('calculatedRate');
-    if (rateDisplay) {
-        const contractRate = SETTINGS.OCTOBER_HOURS > 0 ? (SETTINGS.OCTOBER_PAYOUT / SETTINGS.OCTOBER_HOURS) : SETTINGS.EXTRA_RATE;
-        rateDisplay.textContent = contractRate.toFixed(4);
-    }
+    const monthNames = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
+        'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
+    document.getElementById('monthName').textContent = `${monthNames[now.getMonth()]} ${now.getFullYear()}`;
+    
+    // Aggiornamento Riepilogo Dettagliato - ORA CON DUE DECIMALi
+    document.getElementById('totalHours').textContent = `${totalHours.toFixed(2)}h`;
+    document.getElementById('contractHoursTotal').textContent = `${totalContractHours.toFixed(2)}h`;
+    document.getElementById('contractEarnings').textContent = `€${totalContractEarnings.toFixed(2)} guadagnati`;
+    document.getElementById('extraHoursTotal').textContent = `${totalExtraHours.toFixed(2)}h`;
+    document.getElementById('extraEarnings').textContent = `€${totalExtraEarnings.toFixed(2)} guadagnati`;
+    document.getElementById('grandTotal').textContent = `€${totalDetailEarnings.toFixed(2)}`;
+    document.getElementById('grandTotalHours').textContent = `${totalHours.toFixed(2)}h lavorate`;
 }
 
-// --- MODULO: Funzioni di Utilità ---
-
-// --- MODULO: Gestione Modali ---
-function openModal(id) {
-    const modal = document.getElementById(id);
-    if (modal) {
-        modal.style.display = 'flex';
-    } else {
-        console.error(`Modal con ID '${id}' non trovato.`);
-    }
-}
-
-function closeModal(id) {
-    const modal = document.getElementById(id);
-    if (modal) {
-        modal.style.display = 'none';
-    } else {
-        console.error(`Modal con ID '${id}' non trovato.`);
-    }
-}
-
-// Funzione per popolare il filtro dei mesi
 function populateMonthFilter() {
     const monthFilter = document.getElementById('monthFilter');
     const detailMonthFilter = document.getElementById('detailMonthFilter');
@@ -733,9 +786,7 @@ function populateMonthFilter() {
 
     const months = new Set();
     shifts.forEach(shift => {
-        if (shift.date) {
-            months.add(shift.date.substring(0, 7));
-        }
+        months.add(shift.date.substring(0, 7));
     });
 
     const sortedMonths = Array.from(months).sort().reverse();
@@ -756,42 +807,12 @@ function populateMonthFilter() {
         optionDetail.textContent = monthName;
         detailMonthFilter.appendChild(optionDetail);
     });
-
-    // Seleziona il mese corrente come predefinito
-    const currentMonth = new Date().toISOString().substring(0, 7);
-    monthFilter.value = currentMonth;
-    detailMonthFilter.value = currentMonth;
 }
 
-// --- INIZIALIZZAZIONE APP ---
-initializeApp();
-
-// Funzione per analizzare il contenuto CSV e convertirlo in un array di oggetti
-function parseCSV(csvText) {
-    const normalizedText = csvText.trim().replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-    const lines = normalizedText.split('\n').filter(line => line.trim() !== '');
-
-    const newShifts = [];
-
-    for (let i = 1; i < lines.length; i++) {
-        const line = lines[i].trim();
-        const parts = line.split(',');
-        if (parts.length >= 3) {
-            const [date, start, end, notes = ''] = parts; 
-            newShifts.push({
-                date: date.trim(),
-                start: start.trim(),
-                end: end.trim(),
-                notes: notes.trim()
-            });
-        } else {
-            console.warn(`Riga CSV saltata o non valida: ${line}`);
-        }
-    }
-    shifts = newShifts;
+function filterData() {
+    renderTable();
 }
 
-// --- Funzione per gestire il cambio di vista nei dettagli ---
 function setDetailView(view) {
     const btnTotal = document.getElementById('btnTotal');
     const select = document.getElementById('detailMonthFilter');
@@ -807,14 +828,14 @@ function setDetailView(view) {
     } else { // 'custom' (o implicito 'month' se selezionato un mese specifico)
         detailView = 'custom';
         selectedDetailMonth = select.value;
-
+        
         // Evidenzia il selettore se non è su 'current'
         if (select.value !== 'current') {
             // Non c'è un bottone per il mese specifico, ma deve essere chiaro
             // Che il filtro è attivo. Manteniamo il bottone "Totale" come secondario.
         }
     }
-
+    
     // Se la vista è 'custom' e il valore è 'current', allora la vista è 'month'
     if (detailView === 'custom' && selectedDetailMonth === 'current') {
         detailView = 'month';
@@ -822,3 +843,58 @@ function setDetailView(view) {
 
     updateDashboard();
 }
+
+// --- Funzioni Modale Impostazioni ---
+
+function openSettingsModal() {
+    if (!isLoggedIn) {
+        alert("Accedi al profilo (PIN) per modificare le impostazioni.");
+        return;
+    }
+    
+    // Calcola e mostra il tasso orario di riferimento
+    const contractRate = SETTINGS.OCTOBER_HOURS > 0 ? (SETTINGS.OCTOBER_PAYOUT / SETTINGS.OCTOBER_HOURS) : SETTINGS.EXTRA_RATE;
+
+    document.getElementById('contractStartDate').value = SETTINGS.CONTRACT_START;
+    document.getElementById('weeklyHours').value = SETTINGS.WEEKLY_HOURS;
+    document.getElementById('lastPayHours').value = SETTINGS.OCTOBER_HOURS;
+    document.getElementById('lastPayNet').value = SETTINGS.OCTOBER_PAYOUT;
+    document.getElementById('extraRateInput').value = SETTINGS.EXTRA_RATE;
+    
+    // AGGIUNTA SICUREZZA: Aggiorna solo se l'elemento esiste (nuovo ID)
+    const rateDisplay = document.getElementById('calculatedRate');
+    if (rateDisplay) {
+        rateDisplay.textContent = contractRate.toFixed(4); // Mostra 4 decimali per chiarezza
+    }
+    
+    document.getElementById('settingsModal').style.display = 'flex';
+}
+
+async function saveSettings() {
+    const startDate = document.getElementById('contractStartDate').value;
+    const weeklyHours = parseFloat(document.getElementById('weeklyHours').value);
+    const payHours = parseFloat(document.getElementById('lastPayHours').value);
+    const payNet = parseFloat(document.getElementById('lastPayNet').value);
+    const extraRate = parseFloat(document.getElementById('extraRateInput').value);
+
+    if (!startDate || isNaN(weeklyHours) || isNaN(payHours) || isNaN(payNet) || isNaN(extraRate)) {
+        alert('Compila tutti i campi con valori numerici validi (o una data).');
+        return;
+    }
+
+    SETTINGS.CONTRACT_START = startDate;
+    SETTINGS.WEEKLY_HOURS = weeklyHours;
+    SETTINGS.OCTOBER_HOURS = payHours;
+    SETTINGS.OCTOBER_PAYOUT = payNet;
+    SETTINGS.EXTRA_RATE = extraRate;
+    
+    closeModal('settingsModal');
+
+    await saveSettingsToServer();
+    
+    // Ricalcola tutto con le nuove impostazioni
+    renderTable();
+    updateDashboard();
+}
+
+initializeApp();
