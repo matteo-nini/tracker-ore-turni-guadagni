@@ -50,6 +50,16 @@ async function initializeApp() {
     await loadAllData(); 
     
     toggleDataObfuscation(!isLoggedIn);
+    // Imposta lo stato 'pagato' per i turni di ottobre in busta paga
+    const ottobreKey = '2025-10';
+    const processedShifts = getProcessedShifts();
+    shifts.forEach((shift, idx) => {
+        const proc = processedShifts.find(s => s.date === shift.date && s.start === shift.start && s.end === shift.end && s.notes === shift.notes);
+        if (shift.date.startsWith(ottobreKey) && proc && proc.contractHours > 0) {
+            shift.status = 'pagato';
+        }
+    });
+    autoSaveShiftsToServer();
 }
 
 // Funzione per oscurare/mostrare i dati nel body
@@ -826,7 +836,8 @@ function updateDashboard(obfuscated = false) {
 
     // ...existing code...
 
-    // ...existing code...
+    // Calcolo da dare/da avere (ora con variabili già calcolate)
+    const extraPaid = parseFloat(SETTINGS.EXTRA_PAID) || 0;
 
     // Mostra input solo se loggato
     const extraPaidInput = document.getElementById('extraPaidInput');
@@ -872,9 +883,6 @@ function updateDashboard(obfuscated = false) {
     const totalContractEarnings = totalContractHours * contractRate;
     const totalExtraEarnings = totalExtraHours * SETTINGS.EXTRA_RATE;
     const totalDetailEarnings = totalContractEarnings + totalExtraEarnings;
-
-    // Calcolo da dare/da avere (ora con variabili già calcolate)
-    const extraPaid = parseFloat(SETTINGS.EXTRA_PAID) || 0;
     const extraToGive = totalExtraEarnings - extraPaid;
 
 
