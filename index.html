@@ -221,7 +221,8 @@
                         <path d="M12 18h.01" />
                         <path d="M16 18h.01" />
                     </svg> Storico Turni</h2>
-                    <button id="payslipBtn" style="margin-bottom:10px;display:none;" onclick="openPayslipModal()">Ho ricevuto la busta paga di <span id="payslipMonthName"></span></button>
+                <button id="payslipBtn" style="margin-bottom:10px;display:none;" onclick="openPayslipModal()">Ho
+                    ricevuto la busta paga di <span id="payslipMonthName"></span></button>
                 <div class="table-controls">
                     <span id="saveStatus" style="color: #667eea;">Attendere caricamento...</span>
                     <select id="monthFilter" onchange="filterData()">
@@ -242,6 +243,7 @@
                         <th>Ore Extra</th>
                         <th>Guadagno</th>
                         <th>Note</th>
+                        <th>Stato</th>
                         <th>Azioni</th>
                     </tr>
                 </thead>
@@ -345,27 +347,58 @@
                         d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915" />
                     <circle cx="12" cy="12" r="3" />
                 </svg> Impostazioni Calcoli</h2>
-        <div id="payslipModal" class="modal">
-            <div class="modal-content" style="max-width:400px;">
-                <h2><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-check-icon lucide-file-check"><path d="M9 15l2 2 4-4"/><path d="M4 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h7l7 7v13a2 2 0 0 1-2 2H4z"/></svg> Conferma Busta Paga</h2>
-                <p>Conferma di aver ricevuto la busta paga di <span id="modalPayslipMonth"></span>.<br>Puoi aggiornare i dati della busta paga qui sotto:</p>
-                <div class="input-group">
-                    <label for="modalPayHours">Ore lavorate (da busta paga)</label>
-                    <input type="number" id="modalPayHours" step="0.1" min="0">
-                </div>
-                <div class="input-group">
-                    <label for="modalPayNet">Netto busta paga (€)</label>
-                    <input type="number" id="modalPayNet" step="1" min="0">
-                </div>
-                <div class="modal-buttons">
-                    <button onclick="closeModal('payslipModal')" class="btn-secondary">Annulla</button>
-                    <button onclick="confirmPayslip()">Conferma e aggiorna</button>
+            <div id="payslipModal" class="modal">
+                <div class="modal-content" style="max-width:400px;">
+                    <h2><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                            class="lucide lucide-file-check-icon lucide-file-check">
+                            <path d="M9 15l2 2 4-4" />
+                            <path d="M4 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h7l7 7v13a2 2 0 0 1-2 2H4z" />
+                        </svg> Conferma Busta Paga</h2>
+                    <p>Conferma di aver ricevuto la busta paga di <span id="modalPayslipMonth"></span>.<br>Puoi
+                        aggiornare i dati della busta paga qui sotto:</p>
+                    <div class="input-group">
+                        <label for="modalPayHours">Ore lavorate (da busta paga)</label>
+                        <input type="number" id="modalPayHours" step="0.1" min="0">
+                    </div>
+                    <div class="input-group">
+                        <label for="modalPayNet">Netto busta paga (€)</label>
+                        <input type="number" id="modalPayNet" step="1" min="0">
+                    </div>
+                    <div class="modal-buttons">
+                        <button onclick="closeModal('payslipModal')" class="btn-secondary">Annulla</button>
+                        <button onclick="confirmPayslip()">Conferma e aggiorna</button>
+                    </div>
                 </div>
             </div>
-        </div>
 
             <h3>Contratto</h3>
             <div class="settings-input-grid">
+
+                <!-- Modal personalizzato per aggiornamento busta paga -->
+                <div id="payslipModal" class="modal" style="display:none;">
+                    <div class="modal-content" style="max-width: 420px;">
+                        <h2>Aggiorna dati busta paga <span id="modalPayslipMonth"></span></h2>
+                        <div style="margin-bottom:10px;">Aggiorna i dati per calcoli più precisi:</div>
+                        <label for="modalNetto">Netto busta paga (€):</label>
+                        <input type="number" id="modalNetto" min="0" step="0.01" style="width:100%;margin-bottom:8px;">
+                        <label for="modalContractHours">Ore contrattuali mese:</label>
+                        <input type="number" id="modalContractHours" min="0" step="0.01"
+                            style="width:100%;margin-bottom:8px;">
+                        <label for="modalExtraRate">Paga oraria extra (€):</label>
+                        <input type="number" id="modalExtraRate" min="0" step="0.01"
+                            style="width:100%;margin-bottom:8px;">
+                        <label for="modalExtraHours">Ore extra mese:</label>
+                        <input type="number" id="modalExtraHours" min="0" step="0.01"
+                            style="width:100%;margin-bottom:8px;">
+                        <div style="margin-top:12px;text-align:right;">
+                            <button onclick="closePayslipModal()" style="margin-right:8px;">Annulla</button>
+                            <button onclick="savePayslipData()" style="background:#667eea;color:#fff;">Salva e
+                                aggiorna</button>
+                        </div>
+                        <div id="payslipModalStatus" style="margin-top:8px;color:#475569;"></div>
+                    </div>
+                </div>
                 <div class="input-group">
                     <label for="contractStartDate">Data Inizio Contratto (AAAA-MM-GG)</label>
                     <input type="date" id="contractStartDate">

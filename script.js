@@ -49,7 +49,9 @@ async function initializeApp() {
     // Carica i dati e aggiorna la UI, che applicherà l'oscuramento se non loggato
     await loadAllData(); 
     
-        toggleDataObfuscation(!isLoggedIn);
+    toggleDataObfuscation(!isLoggedIn);
+}
+
 // Funzione per oscurare/mostrare i dati nel body
 function toggleDataObfuscation(obfuscate) {
     const body = document.body;
@@ -87,18 +89,16 @@ async function loadProfilesList() {
 function populateProfileSelector() {
     const selector = document.getElementById('profileSelector');
     selector.innerHTML = '';
+    if (!PROFILES || PROFILES.length === 0) {
         selector.innerHTML = '<option value="">Nessun Profilo</option>';
         return;
     }
-    
     PROFILES.forEach(p => {
         const option = document.createElement('option');
         option.value = p.id;
-        // Rimosso l'emoji ✅
         option.textContent = p.name + (currentProfileId === p.id && isLoggedIn ? "" : " (offline)"); 
         selector.appendChild(option);
     });
-    
     // Seleziona il profilo corrente dopo aver popolato
     if (currentProfileId) {
         selector.value = currentProfileId;
@@ -598,6 +598,91 @@ function getProcessedShifts() {
 
 
 // --- Funzioni UI ---
+// Mostra il pulsante busta paga se loggato e ci sono turni extra da pagare nel mese corrente
+function updatePayslipButton() {
+    const payslipBtn = document.getElementById('payslipBtn');
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const extraToPay = shifts.some(s => s.date.substring(0, 7) === currentMonth && s.extraHours > 0 && s.status !== 'pagato');
+    if (isLoggedIn && extraToPay) {
+        payslipBtn.style.display = '';
+        document.getElementById('payslipMonthName').textContent = currentMonth;
+    } else {
+        payslipBtn.style.display = 'none';
+    }
+}
+
+// Al click del pulsante busta paga: segna tutti i turni extra del mese come pagati e mostra modal per aggiornare dati
+function openPayslipModal() {
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    let updated = false;
+    shifts.forEach(s => {
+        if (s.date.substring(0, 7) === currentMonth && s.extraHours > 0) {
+            s.status = 'pagato';
+            updated = true;
+        }
+    });
+    if (updated) {
+        renderTable();
+        autoSaveShiftsToServer();
+    }
+    // Mostra il modal personalizzato
+    document.getElementById('payslipModal').style.display = 'flex';
+    document.getElementById('modalPayslipMonth').textContent = currentMonth;
+    // Precompila i campi con i dati attuali
+    document.getElementById('modalNetto').value = SETTINGS.OCTOBER_PAYOUT || '';
+    document.getElementById('modalContractHours').value = SETTINGS.OCTOBER_HOURS || '';
+    document.getElementById('modalExtraRate').value = SETTINGS.EXTRA_RATE || '';
+    // Calcola ore extra del mese
+    let extraHoursMonth = 0;
+    shifts.forEach(s => {
+        if (s.date.substring(0, 7) === currentMonth && s.extraHours > 0) {
+            extraHoursMonth += s.extraHours;
+        }
+    });
+    document.getElementById('modalExtraHours').value = extraHoursMonth;
+    document.getElementById('payslipModalStatus').textContent = '';
+}
+
+function closePayslipModal() {
+    document.getElementById('payslipModal').style.display = 'none';
+}
+
+function savePayslipData() {
+    // Aggiorna le impostazioni con i dati del modal
+    const netto = parseFloat(document.getElementById('modalNetto').value) || 0;
+    const contractHours = parseFloat(document.getElementById('modalContractHours').value) || 0;
+    const extraRate = parseFloat(document.getElementById('modalExtraRate').value) || 0;
+    const extraHours = parseFloat(document.getElementById('modalExtraHours').value) || 0;
+    SETTINGS.OCTOBER_PAYOUT = netto;
+    SETTINGS.OCTOBER_HOURS = contractHours;
+    SETTINGS.EXTRA_RATE = extraRate;
+    // Non serve salvare extraHours, è solo informativo
+    saveSettingsToServer();
+    document.getElementById('payslipModalStatus').textContent = 'Dati aggiornati!';
+    setTimeout(() => {
+        closePayslipModal();
+        renderTable();
+    }, 1200);
+}
+
+// Migliora il calcolo del già pagato sugli extra: somma tutti i turni extra con stato "pagato"
+function calculateExtraPaid() {
+    let totalPaid = 0;
+    shifts.forEach(s => {
+        if (s.extraHours > 0 && s.status === 'pagato') {
+            totalPaid += s.extraHours * SETTINGS.EXTRA_RATE;
+        }
+    });
+    return totalPaid;
+}
+
+// Aggiorna la dashboard con il nuovo calcolo del già pagato
+function updateExtraPaidDisplay() {
+    const extraPaid = calculateExtraPaid();
+    document.getElementById('extraPaid').textContent = `€${extraPaid.toFixed(2)}`;
+}
 
 function renderTable() {
     const monthFilter = document.getElementById('monthFilter').value;
@@ -614,15 +699,14 @@ function renderTable() {
     }
 
     if (shifts.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 20px;">Nessun turno. Inizia ad aggiungerne uno.</td></tr>'; // Aggiornato colspan a 10
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; padding: 20px;">Nessun turno. Inizia ad aggiungerne uno.</td></tr>';
         updateDashboard();
         return;
     }
-    
     // Se non loggato, mostra un messaggio di avviso
     if (!isLoggedIn) {
-        tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 20px; color: #dc3545; font-weight: bold;">Accedi con il PIN per visualizzare e modificare lo storico dei turni.</td></tr>'; // Aggiornato colspan a 10
-        updateDashboard(true); // Aggiorna la dashboard ma con dati oscurati
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; padding: 20px; color: #dc3545; font-weight: bold;">Accedi con il PIN per visualizzare e modificare lo storico dei turni.</td></tr>';
+        updateDashboard(true);
         return;
     }
 
@@ -637,7 +721,7 @@ function renderTable() {
             const weekRow = tbody.insertRow();
             weekRow.className = 'week-separator';
             const cell = weekRow.insertCell();
-            cell.colSpan = 11; // 10 colonne + 1 Stato
+            cell.colSpan = 12; // 11 colonne + 1 Stato
             cell.textContent = `Settimana ${week.split('-W')[1]} (${week.split('-W')[0]})`;
             lastWeek = week;
         }
@@ -649,11 +733,12 @@ function renderTable() {
         // Bottone per cambiare stato solo per extra
         let payBtn = '';
         if (shift.extraHours > 0) {
-            payBtn = `<button class="status-btn" onclick="toggleExtraStatus(${originalIndex})">${shift.status === 'pagato' ? 'Segna da pagare' : 'Segna pagato'}</button>`;
+            payBtn = `<button class="status-btn" onclick="toggleExtraStatus(${originalIndex})"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-receipt-euro-icon lucide-receipt-euro"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M8 12h5"/><path d="M16 9.5a4 4 0 1 0 0 5.2"/></svg> ${shift.status === 'pagato' ? 'Segna da pagare' : 'Segna pagato'}</button>`;
         }
         const actionsHtml = `
-            <button class="edit-btn" onclick="openEditModal(${originalIndex})">Modifica</button>
-            <button class="delete-btn" onclick="deleteShift(${originalIndex})">Elimina</button>
+            ${payBtn}
+            <button class="edit-btn" onclick="openEditModal(${originalIndex})"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square-pen-icon lucide-square-pen"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/></svg> Modifica</button>
+            <button class="delete-btn" onclick="deleteShift(${originalIndex})"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash2-icon lucide-trash-2"><path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Elimina</button>
         `;
         row.innerHTML = `
             <td>${date.toLocaleDateString('it-IT')}</td>
@@ -665,7 +750,7 @@ function renderTable() {
             <td class="extra-hours">${shift.extraHours.toFixed(2)}h</td>
             <td><strong>€${shift.earnings.toFixed(2)}</strong></td>
             <td><span class='notes ${shift.notes === ""? "hidden": ""}'>${shift.notes || ''}</span></td>
-            <td>${statusHtml} ${payBtn}</td>
+            <td>${statusHtml}</td>
             <td style='display:inline-flex;align-items:center;gap:5px;'>${actionsHtml}</td>
         `;
     });
@@ -682,6 +767,8 @@ function toggleExtraStatus(index) {
 }
 
     updateDashboard();
+    updatePayslipButton();
+    updateExtraPaidDisplay();
 }
 
 function updateDashboard(obfuscated = false) {
@@ -694,22 +781,17 @@ function updateDashboard(obfuscated = false) {
     
     // Calcola il tasso orario contrattuale (per trasparenza)
     const contractRate = SETTINGS.OCTOBER_HOURS > 0 ? (SETTINGS.OCTOBER_PAYOUT / SETTINGS.OCTOBER_HOURS) : SETTINGS.EXTRA_RATE;
-    
-    // AGGIUNTA SICUREZZA: Aggiorna solo se l'elemento esiste
+    // Aggiorna il display del tasso orario
     const rateDisplay = document.getElementById('calculatedRate');
     if (rateDisplay) {
-        rateDisplay.textContent = contractRate.toFixed(4); // Mostra 4 decimali
+        rateDisplay.textContent = contractRate.toFixed(4);
     }
 
-
     if (obfuscated) {
-        // Se oscurato, imposta tutti i valori a placeholder
         document.getElementById('weekHours').textContent = '---';
         document.getElementById('monthHours').textContent = '---';
         document.getElementById('monthEarnings').textContent = '€---';
         document.getElementById('totalEarnings').textContent = '€---';
-        
-        // Riepilogo Dettagliato
         document.getElementById('totalHours').textContent = '---h';
         document.getElementById('contractHoursTotal').textContent = '---h';
         document.getElementById('contractEarnings').textContent = '€--- guadagnati';
@@ -717,8 +799,11 @@ function updateDashboard(obfuscated = false) {
         document.getElementById('extraEarnings').textContent = '€--- guadagnati';
         document.getElementById('grandTotal').textContent = '€---';
         document.getElementById('grandTotalHours').textContent = '---h lavorate';
+        document.getElementById('extraPaid').textContent = '€---';
         return;
     }
+    // Aggiorna il già pagato extra
+    updateExtraPaidDisplay();
 
     // Calcoli Dashboard Principale
     const weekHours = processedShifts

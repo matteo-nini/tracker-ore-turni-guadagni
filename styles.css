@@ -456,7 +456,8 @@ tr:hover td {
 
 /* Stile Bottoni Azione Tabella */
 .delete-btn,
-.edit-btn {
+.edit-btn,
+.status-btn {
     padding: 5px 10px;
     font-size: 0.9em;
     font-weight: 500;
