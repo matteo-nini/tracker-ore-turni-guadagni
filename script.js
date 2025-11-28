@@ -6,6 +6,9 @@ let shifts = [];
 // Base URL for API calls - usa il percorso completo del tuo sito
 const API_BASE = 'https://matteon20.sg-host.com/api/';
 
+// Default iniziale per la tariffa oraria (da usare solo se non salvata)
+const CONTRACT_RATE_DEFAULT = 300 / 32.4; 
+
 // Initialize app
 document.addEventListener('DOMContentLoaded', () => {
     initializeApp();
@@ -45,7 +48,12 @@ function setupEventListeners() {
     document.getElementById('deleteProfileBtn').addEventListener('click', handleDeleteProfile);
     document.getElementById('registerPayslipBtn').addEventListener('click', showPayslipModal);
     document.getElementById('payslipForm').addEventListener('submit', handlePayslipSubmit);
-    document.getElementById('monthFilter').addEventListener('change', updateSummaryView);
+    
+    // Il filtro è ora solo nella vista riepilogo, quindi l'handler rimane qui
+    const monthFilter = document.getElementById('monthFilter');
+    if (monthFilter) {
+        monthFilter.addEventListener('change', updateSummaryView);
+    }
 }
 
 function showScreen(screenId) {
@@ -56,13 +64,20 @@ function showScreen(screenId) {
 function switchView(viewName) {
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     document.querySelectorAll('.nav-item[data-view]').forEach(i => i.classList.remove('active'));
-    document.getElementById(viewName + 'View').classList.add('active');
-    document.querySelector(`.nav-item[data-view="${viewName}"]`).classList.add('active');
+    // Controlla se l'elemento esiste prima di aggiungere la classe 'active'
+    const viewElement = document.getElementById(viewName + 'View');
+    if (viewElement) {
+        viewElement.classList.add('active');
+    }
+    const navElement = document.querySelector(`.nav-item[data-view="${viewName}"]`);
+    if (navElement) {
+        navElement.classList.add('active');
+    }
     
-    if (viewName === 'dashboard') updateDashboard();
+    if (viewName === 'dashboard') updateDashboard(); 
     if (viewName === 'shifts') updateShiftsList();
-    if (viewName === 'summary') updateSummaryView();
     if (viewName === 'settings') loadSettings();
+    if (viewName === 'summary') updateSummaryView(); // <-- NUOVO: Aggiorna il riepilogo solo quando si entra
 }
 
 async function handleLogin(e) {
@@ -143,6 +158,12 @@ async function loadUserData() {
         const settingsResponse = await fetch(API_BASE + `get_settings.php?username=${currentUser}`, {method: 'GET'});
 
         userSettings = await settingsResponse.json();
+        
+        // Assicura che la tariffa contrattuale esista, altrimenti usa il default
+        if (userSettings && userSettings.contractRate === undefined) {
+             userSettings.contractRate = CONTRACT_RATE_DEFAULT;
+        }
+
         const shiftsResponse = await fetch(API_BASE + `get_shifts.php?username=${currentUser}`, {method: 'GET'});
         const shiftsData = await shiftsResponse.text();
         shifts = parseCSV(shiftsData);
@@ -205,25 +226,61 @@ function calculateHours(start, end) {
     return hours + minutes / 60;
 }
 
-function getWeekNumber(date) {
-    const d = new Date(date);
+function getWeekNumber(dateStr) {
+    const d = new Date(dateStr);
     d.setHours(0, 0, 0, 0);
-    d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+    // Imposta al giovedì della settimana per standardizzare il calcolo (ISO)
+    d.setDate(d.getDate() + 4 - (d.getDay() || 7)); 
     const yearStart = new Date(d.getFullYear(), 0, 1);
+    // Calcola il numero di settimane
     return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
 }
 
 function isShiftExtra(shiftDate) {
-    if (!userSettings || !userSettings.contractStartDate) return true;
+    if (!userSettings || !userSettings.contractStartDate) return false; // Non trattare come extra se manca la data
     const contractStart = new Date(userSettings.contractStartDate);
     const shift = new Date(shiftDate);
+    // True se il turno è prima dell'inizio del contratto
     return shift < contractStart;
 }
+
+// Determina se un turno è di tipo 'extra' o 'contract' basandosi sul cap settimanale.
+function getShiftType(shift) {
+    // 1. Check extra due to contract start date
+    if (isShiftExtra(shift.date)) return 'extra';
+
+    const weeklyContract = userSettings?.weeklyHours || 18;
+    const week = getWeekNumber(shift.date);
+    
+    // 2. Trova tutti i turni non extra della settimana, ordinati cronologicamente
+    const weekShifts = shifts
+        .filter(s => getWeekNumber(s.date) === week && !isShiftExtra(s.date))
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
+    
+    let usedContract = 0;
+
+    for (const s of weekShifts) {
+        const hours = calculateHours(s.start, s.end);
+        const remainingContract = Math.max(0, weeklyContract - usedContract);
+        const allocatedContract = Math.min(hours, remainingContract);
+        
+        // Verifica se questo è il turno target
+        if (s.date === shift.date && s.start === shift.start && s.end === shift.end) {
+            // Se ha contribuito con ore contrattuali (anche se parzialmente)
+            return allocatedContract > 0 ? 'contract' : 'extra'; 
+        }
+        
+        usedContract += allocatedContract;
+    }
+    return 'contract'; // Fallback
+}
+
 
 function getMonthShifts(month, year) {
     return shifts.filter(s => {
         const d = new Date(s.date);
-        return d.getMonth() === month && d.getFullYear() === year;
+        // Usa getMonth() che è 0-based
+        return d.getMonth() === month && d.getFullYear() === year; 
     });
 }
 
@@ -238,63 +295,83 @@ function calculateWeeklyStats(year, week) {
         totalHours += calculateHours(s.start, s.end);
     });
     
-    const weeklyContract = userSettings?.weeklyHours || 18;
-    const contractHours = Math.min(totalHours, weeklyContract);
-    const extraHours = Math.max(0, totalHours - weeklyContract);
-    
-    return { totalHours, contractHours, extraHours };
+    return { totalHours };
 }
 
+// LOGICA FONDAMENTALE PER LA DIVISIONE CONTRATTO/EXTRA
 function calculateMonthlyStats(month, year) {
-    const monthShifts = getMonthShifts(month, year);
     let contractHours = 0;
     let extraHours = 0;
-    const weekMap = new Map();
-    
-    monthShifts.forEach(shift => {
+    const weeklyContract = userSettings?.weeklyHours || 18;
+    const weekContractUsed = new Map(); // Map<Year-WeekKey, UsedContractHours>
+
+    // 1. Ordina tutti i turni cronologicamente per garantire una corretta allocazione
+    const allSortedShifts = [...shifts].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    allSortedShifts.forEach(shift => {
         const shiftDate = new Date(shift.date);
+        const shiftMonth = shiftDate.getMonth();
+        const shiftYear = shiftDate.getFullYear();
         const week = getWeekNumber(shift.date);
-        const key = `${shiftDate.getFullYear()}-${week}`;
-        if (!weekMap.has(key)) weekMap.set(key, []);
-        weekMap.get(key).push(shift);
-    });
-    
-    weekMap.forEach((weekShifts, key) => {
-        const [year, week] = key.split('-');
-        const allWeekShifts = shifts.filter(s => {
-            const d = new Date(s.date);
-            return d.getFullYear() === parseInt(year) && getWeekNumber(s.date) === parseInt(week);
-        });
+        const key = `${shiftYear}-${week}`;
+        const shiftHours = calculateHours(shift.start, shift.end);
         
-        let weekTotal = 0;
-        allWeekShifts.forEach(s => weekTotal += calculateHours(s.start, s.end));
-        const weeklyContract = userSettings?.weeklyHours || 18;
-        
-        weekShifts.forEach(shift => {
-            const shiftHours = calculateHours(shift.start, shift.end);
-            if (isShiftExtra(shift.date)) {
-                extraHours += shiftHours;
-            } else {
-                if (weekTotal <= weeklyContract) {
-                    contractHours += shiftHours;
-                } else {
-                    const availableContract = Math.max(0, weeklyContract - (weekTotal - shiftHours));
-                    contractHours += Math.min(shiftHours, availableContract);
-                    extraHours += Math.max(0, shiftHours - availableContract);
-                }
-            }
-        });
+        let allocatedContract = 0;
+        let allocatedExtra = 0;
+
+        // 1a. Check for "Extra" due to contract start date
+        if (isShiftExtra(shift.date)) {
+            allocatedExtra = shiftHours;
+        } else {
+            // 1b. Weekly Contract Allocation (solo se non è extra per data)
+            const used = weekContractUsed.get(key) || 0;
+            const remainingContract = Math.max(0, weeklyContract - used);
+
+            allocatedContract = Math.min(shiftHours, remainingContract);
+            allocatedExtra = shiftHours - allocatedContract;
+
+            // Aggiorna il totale utilizzato per la settimana
+            weekContractUsed.set(key, used + allocatedContract);
+        }
+
+        // 1c. Conta solo l'allocazione se il turno cade nel mese target
+        if (shiftMonth === month && shiftYear === year) {
+            contractHours += allocatedContract;
+            extraHours += allocatedExtra;
+        }
     });
-    
+
     return { contractHours, extraHours };
 }
+
+// Funzione di utilità per salvare le impostazioni
+async function saveSettings() {
+    try {
+        const response = await fetch(API_BASE + 'save_settings.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: currentUser, settings: userSettings })
+        });
+        const result = await response.json();
+        return result.success;
+    } catch (error) {
+        console.error('Save settings error:', error);
+        return false;
+    }
+}
+
 
 function updateDashboard() {
     const now = new Date();
     const currentYear = now.getFullYear();
-    const currentWeek = getWeekNumber(now);
+    const currentWeek = getWeekNumber(now.toLocaleDateString('en-CA'));
     const currentMonth = now.getMonth();
     
+    // Tariffe Dinamiche
+    const contractRate = userSettings?.contractRate || CONTRACT_RATE_DEFAULT; 
+    const extraRate = userSettings?.extraRate || 10;
+    
+    // Stats Settimanali e Mensili (Ore)
     const weekStats = calculateWeeklyStats(currentYear, currentWeek);
     document.getElementById('weekHours').textContent = weekStats.totalHours.toFixed(1) + 'h';
     
@@ -303,34 +380,66 @@ function updateDashboard() {
     monthShifts.forEach(s => monthTotal += calculateHours(s.start, s.end));
     document.getElementById('monthHours').textContent = monthTotal.toFixed(1) + 'h';
     
+    // Calcolo Guadagni Mese Corrente (usa l'allocazione)
     const monthStats = calculateMonthlyStats(currentMonth, currentYear);
-    const extraRate = userSettings?.extraRate || 10;
-    const contractEarnings = monthStats.contractHours * (300 / 32.4);
-    const extraEarnings = monthStats.extraHours * extraRate;
+    
+    const contractEarnings = monthStats.contractHours * contractRate; 
+    const extraEarnings = monthStats.extraHours * extraRate; 
     
     document.getElementById('contractEarnings').textContent = '€' + contractEarnings.toFixed(2);
     document.getElementById('extraEarnings').textContent = '€' + extraEarnings.toFixed(2);
     
+    // Calcolo Pagamenti TOTALI (Ora CUMULATIVO su TUTTI i turni)
     let paidContract = 0, pendingContract = 0, paidExtra = 0, pendingExtra = 0;
+    const weeklyContract = userSettings?.weeklyHours || 18;
+    const weekContractUsed = new Map();
     
-    monthShifts.forEach(shift => {
-        const hours = calculateHours(shift.start, shift.end);
-        const isExtra = isShiftExtra(shift.date);
-        const earnings = isExtra ? hours * extraRate : hours * (300 / 32.4);
+    // Iterazione su TUTTI i turni (non solo il mese corrente) per il calcolo cumulativo
+    const allSortedShifts = [...shifts].sort((a, b) => new Date(a.date) - new Date(b.date));
+    
+    allSortedShifts.forEach(shift => {
+        const shiftDate = new Date(shift.date);
+        const shiftYear = shiftDate.getFullYear();
         
-        if (shift.status === 'paid') {
-            if (isExtra) paidExtra += earnings;
-            else paidContract += earnings;
+        const week = getWeekNumber(shift.date);
+        const key = `${shiftYear}-${week}`;
+        const shiftHours = calculateHours(shift.start, shift.end);
+        
+        let allocatedContract = 0;
+        let allocatedExtra = 0;
+
+        // 1. Check for "Extra" due to contract start date
+        if (isShiftExtra(shift.date)) {
+            allocatedExtra = shiftHours;
         } else {
-            if (isExtra) pendingExtra += earnings;
-            else pendingContract += earnings;
+            // 2. Weekly Contract Allocation 
+            const used = weekContractUsed.get(key) || 0;
+            const remainingContract = Math.max(0, weeklyContract - used);
+
+            allocatedContract = Math.min(shiftHours, remainingContract);
+            allocatedExtra = shiftHours - allocatedContract;
+
+            weekContractUsed.set(key, used + allocatedContract);
         }
+        
+        // 3. Track Earnings based on status (split by allocated hours)
+        
+        const contractEarningsSegment = allocatedContract * contractRate;
+        if (shift.status === 'paid') paidContract += contractEarningsSegment;
+        else pendingContract += contractEarningsSegment; // Contributo al pending
+        
+        const extraEarningsSegment = allocatedExtra * extraRate;
+        if (shift.status === 'paid') paidExtra += extraEarningsSegment;
+        else pendingExtra += extraEarningsSegment; // Contributo al pending
     });
     
+    // Aggiornamento dei box pagamento (ora cumulativo)
     document.getElementById('paidContract').textContent = '€' + paidContract.toFixed(2);
     document.getElementById('pendingContract').textContent = '€' + pendingContract.toFixed(2);
     document.getElementById('paidExtra').textContent = '€' + paidExtra.toFixed(2);
     document.getElementById('pendingExtra').textContent = '€' + pendingExtra.toFixed(2);
+    
+    // RIMOSSO: updateSummaryView() NON viene più chiamato qui.
 }
 
 function showShiftForm(editIndex = null) {
@@ -348,6 +457,8 @@ function showShiftForm(editIndex = null) {
         document.getElementById('formTitle').textContent = 'Nuovo Turno';
         document.getElementById('editShiftIndex').value = '';
         document.getElementById('shiftFormElement').reset();
+        // Imposta la data al giorno corrente
+        document.getElementById('shiftDate').valueAsDate = new Date();
     }
     
     document.getElementById('shiftForm').scrollIntoView({ behavior: 'smooth' });
@@ -382,6 +493,11 @@ async function handleSaveShift(e) {
     hideShiftForm();
     updateShiftsList();
     updateDashboard();
+    
+    // Se la vista attiva è il riepilogo, aggiornala.
+    if (document.getElementById('summaryView').classList.contains('active')) {
+        updateSummaryView();
+    }
 }
 
 async function deleteShift(index) {
@@ -390,6 +506,9 @@ async function deleteShift(index) {
         await saveShifts();
         updateShiftsList();
         updateDashboard();
+        if (document.getElementById('summaryView').classList.contains('active')) {
+            updateSummaryView();
+        }
     }
 }
 
@@ -398,6 +517,9 @@ async function toggleShiftStatus(index) {
     await saveShifts();
     updateShiftsList();
     updateDashboard();
+    if (document.getElementById('summaryView').classList.contains('active')) {
+        updateSummaryView();
+    }
 }
 
 async function saveShifts() {
@@ -430,9 +552,12 @@ function updateShiftsList() {
     
     shifts.forEach((shift, index) => {
         const hours = calculateHours(shift.start, shift.end);
-        const isExtra = isShiftExtra(shift.date);
-        const type = isExtra ? 'extra' : 'contract';
-        const typeLabel = isExtra ? 'Extra' : 'Contratto';
+        
+        // Usa la nuova funzione getShiftType per la visualizzazione
+        const type = getShiftType(shift);
+        const isExtraType = type === 'extra';
+        const typeLabel = isExtraType ? 'Extra' : 'Contratto';
+        
         const statusLabel = shift.status === 'paid' ? 'Pagato' : 'Da pagare';
         
         const item = document.createElement('div');
@@ -443,7 +568,7 @@ function updateShiftsList() {
                 <div class="shift-time">${shift.start} - ${shift.end}</div>
                 <div class="shift-hours">${hours.toFixed(1)}h 
                     <span class="shift-badge ${type}">${typeLabel}</span>
-                    ${isExtra ? `<span class="shift-badge ${shift.status}">${statusLabel}</span>` : ''}
+                    ${isExtraType ? `<span class="shift-badge ${shift.status}">${statusLabel}</span>` : ''}
                 </div>
                 ${shift.notes ? `<div class="shift-notes">${shift.notes}</div>` : ''}
             </div>
@@ -453,7 +578,7 @@ function updateShiftsList() {
                         <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
                     </svg>
                 </button>
-                ${isExtra ? `
+                ${isShiftExtra(shift.date) ? `
                 <button class="icon-btn" onclick="toggleShiftStatus(${index})" title="${shift.status === 'paid' ? 'Segna da pagare' : 'Segna pagato'}">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="20 6 9 17 4 12"/>
@@ -474,47 +599,105 @@ function updateShiftsList() {
 }
 
 function updateSummaryView() {
-    const monthFilter = document.getElementById('monthFilter').value;
-    let filteredShifts = shifts;
-    
-    if (monthFilter) {
-        const [year, month] = monthFilter.split('-').map(Number);
-        filteredShifts = getMonthShifts(month - 1, year);
+    // Aggiungo un controllo per evitare l'errore se la vista non è attiva
+    const summaryTotalHoursEl = document.getElementById('summaryTotalHours');
+    if (!summaryTotalHoursEl) {
+        // Se l'elemento principale non esiste, esci
+        return; 
     }
     
-    let totalHours = 0, contractHours = 0, extraHours = 0;
+    const monthFilter = document.getElementById('monthFilter').value;
+    let shiftsToAnalyze = shifts;
     
-    filteredShifts.forEach(shift => {
-        const hours = calculateHours(shift.start, shift.end);
-        totalHours += hours;
-        if (isShiftExtra(shift.date)) {
-            extraHours += hours;
-        } else {
-            contractHours += hours;
-        }
-    });
+    let currentFilterYear, currentFilterMonth;
     
+    // Se c'è un filtro, analizza solo i turni di quel mese
+    if (monthFilter) {
+        const [year, month] = monthFilter.split('-').map(Number);
+        currentFilterYear = year;
+        currentFilterMonth = month - 1; // month - 1 perché i mesi JS sono 0-based
+        shiftsToAnalyze = getMonthShifts(currentFilterMonth, currentFilterYear); 
+    }
+    
+    const totalHours = shiftsToAnalyze.reduce((acc, shift) => acc + calculateHours(shift.start, shift.end), 0);
+    
+    let contractHours = 0;
+    let extraHours = 0;
+    
+    // Calcola l'allocazione Contratto/Extra sul periodo filtrato/totale.
+    if (monthFilter) {
+        // Se c'è un filtro, usiamo calculateMonthlyStats per il mese filtrato
+        const monthStats = calculateMonthlyStats(currentFilterMonth, currentFilterYear);
+        contractHours = monthStats.contractHours;
+        extraHours = monthStats.extraHours;
+    } else {
+        // Se NON c'è filtro, dobbiamo ricalcolare l'allocazione su tutti i turni
+        const weeklyContract = userSettings?.weeklyHours || 18;
+        const weekContractUsed = new Map();
+        
+        const allSortedShifts = [...shifts].sort((a, b) => new Date(a.date) - new Date(b.date));
+        
+        allSortedShifts.forEach(shift => {
+            const shiftDate = new Date(shift.date);
+            const shiftYear = shiftDate.getFullYear();
+            const week = getWeekNumber(shift.date);
+            const key = `${shiftYear}-${week}`;
+            const shiftHours = calculateHours(shift.start, shift.end);
+            
+            let allocatedContract = 0;
+            let allocatedExtra = 0;
+
+            if (isShiftExtra(shift.date)) {
+                allocatedExtra = shiftHours;
+            } else {
+                const used = weekContractUsed.get(key) || 0;
+                const remainingContract = Math.max(0, weeklyContract - used);
+
+                allocatedContract = Math.min(shiftHours, remainingContract);
+                allocatedExtra = shiftHours - allocatedContract;
+
+                weekContractUsed.set(key, used + allocatedContract);
+            }
+            
+            contractHours += allocatedContract;
+            extraHours += allocatedExtra;
+        });
+    }
+
+    const contractRate = userSettings?.contractRate || CONTRACT_RATE_DEFAULT; 
     const extraRate = userSettings?.extraRate || 10;
-    const totalEarnings = (contractHours * (300 / 32.4)) + (extraHours * extraRate);
+
+    const contractEarnings = contractHours * contractRate;
+    const extraEarnings = extraHours * extraRate;
+    const totalEarnings = contractEarnings + extraEarnings;
     
-    document.getElementById('summaryTotalHours').textContent = totalHours.toFixed(1) + 'h';
+    // Inietta le ore e i guadagni negli elementi (ora usiamo summaryTotalHoursEl che è garantito esistere)
+    summaryTotalHoursEl.textContent = totalHours.toFixed(1) + 'h';
+    
     document.getElementById('summaryContractHours').textContent = contractHours.toFixed(1) + 'h';
+    document.getElementById('summaryContractEarnings').textContent = '(€' + contractEarnings.toFixed(2) + ')';
+    
     document.getElementById('summaryExtraHours').textContent = extraHours.toFixed(1) + 'h';
+    document.getElementById('summaryExtraEarnings').textContent = '(€' + extraEarnings.toFixed(2) + ')';
+    
     document.getElementById('summaryTotalEarnings').textContent = '€' + totalEarnings.toFixed(2);
     
     const tbody = document.getElementById('summaryTableBody');
     
-    if (filteredShifts.length === 0) {
+    if (shiftsToAnalyze.length === 0) {
         tbody.innerHTML = '<tr><td colspan="8" class="empty-state">Nessun turno da visualizzare</td></tr>';
         return;
     }
     
     tbody.innerHTML = '';
     
-    filteredShifts.forEach((shift) => {
+    shiftsToAnalyze.forEach((shift) => {
         const hours = calculateHours(shift.start, shift.end);
-        const isExtra = isShiftExtra(shift.date);
-        const type = isExtra ? 'Extra' : 'Contratto';
+        
+        const type = getShiftType(shift);
+        const isExtraType = type === 'extra';
+        const typeLabel = isExtraType ? 'Extra' : 'Contratto';
+        
         const status = shift.status === 'paid' ? 'Pagato' : 'Da pagare';
         const originalIndex = shifts.indexOf(shift);
         
@@ -524,7 +707,7 @@ function updateSummaryView() {
             <td>${shift.start}</td>
             <td>${shift.end}</td>
             <td>${hours.toFixed(1)}h</td>
-            <td><span class="shift-badge ${isExtra ? 'extra' : 'contract'}">${type}</span></td>
+            <td><span class="shift-badge ${isExtraType ? 'extra' : 'contract'}">${typeLabel}</span></td>
             <td><span class="shift-badge ${shift.status}">${status}</span></td>
             <td>${shift.notes}</td>
             <td>
@@ -534,7 +717,7 @@ function updateSummaryView() {
                             <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
                         </svg>
                     </button>
-                    ${isExtra ? `
+                    ${isExtraType ? `
                     <button class="icon-btn" onclick="toggleShiftStatus(${originalIndex}); updateSummaryView();" title="Cambia stato">
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <polyline points="20 6 9 17 4 12"/>
@@ -554,6 +737,7 @@ function updateSummaryView() {
         tbody.appendChild(row);
     });
     
+    // Popola il filtro la prima volta (se esiste)
     if (document.getElementById('monthFilter').options.length === 1) {
         populateMonthFilter();
     }
@@ -561,6 +745,9 @@ function updateSummaryView() {
 
 function populateMonthFilter() {
     const select = document.getElementById('monthFilter');
+    // Aggiungo controllo per evitare errore se select non esiste (non nella vista corretta)
+    if (!select) return; 
+    
     const months = new Set();
     
     shifts.forEach(shift => {
@@ -573,12 +760,14 @@ function populateMonthFilter() {
     
     sortedMonths.forEach(month => {
         const [year, m] = month.split('-');
-        const date = new Date(year, parseInt(m) - 1);
+        // Mese 0-based
+        const date = new Date(year, parseInt(m) - 1); 
         const monthName = date.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
         
         const option = document.createElement('option');
         option.value = month;
-        option.textContent = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+        // Iniziale maiuscola
+        option.textContent = monthName.charAt(0).toUpperCase() + monthName.slice(1); 
         select.appendChild(option);
     });
 }
@@ -588,35 +777,29 @@ function loadSettings() {
         document.getElementById('contractStartDate').value = userSettings.contractStartDate || '2024-10-21';
         document.getElementById('weeklyHours').value = userSettings.weeklyHours || 18;
         document.getElementById('extraRate').value = userSettings.extraRate || 10;
+        // La tariffa contrattuale è gestita internamente/tramite Payslip Modal
     }
 }
 
 async function handleSaveSettings(e) {
     e.preventDefault();
     
+    // Mantiene l'eventuale contractRate precedentemente salvato
+    const existingContractRate = userSettings?.contractRate; 
+    
     userSettings = {
         contractStartDate: document.getElementById('contractStartDate').value,
         weeklyHours: parseFloat(document.getElementById('weeklyHours').value),
-        extraRate: parseFloat(document.getElementById('extraRate').value)
+        extraRate: parseFloat(document.getElementById('extraRate').value),
+        contractRate: existingContractRate || CONTRACT_RATE_DEFAULT // Conserva il rate o usa il default
     };
     
-    try {
-        const response = await fetch(API_BASE + 'save_settings.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: currentUser, settings: userSettings })
-        });
+    const success = await saveSettings();
         
-        const result = await response.json();
-        
-        if (result.success) {
-            alert('Impostazioni salvate con successo!');
-            updateDashboard();
-        } else {
-            alert('Errore durante il salvataggio');
-        }
-    } catch (error) {
-        console.error('Save settings error:', error);
+    if (success) {
+        alert('Impostazioni salvate con successo!');
+        updateDashboard();
+    } else {
         alert('Errore durante il salvataggio');
     }
 }
@@ -686,10 +869,13 @@ function showPayslipModal() {
     select.innerHTML = '';
     const now = new Date();
     
-    for (let i = 1; i <= 12; i++) {
-        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    // Popola i mesi con l'anno corretto (ultimi 12 mesi)
+    for (let i = 0; i < 12; i++) {
+        // Calcola il mese corrente e i 11 precedenti
+        const date = new Date(now.getFullYear(), now.getMonth() - i, 1); 
         const monthName = date.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
-        const value = `${date.getFullYear()}-${String(date.getMonth()).padStart(2, '0')}`;
+        // Il valore deve essere Anno-Mese (0-11)
+        const value = `${date.getFullYear()}-${String(date.getMonth()).padStart(2, '0')}`; 
         
         const option = document.createElement('option');
         option.value = value;
@@ -697,6 +883,10 @@ function showPayslipModal() {
         select.appendChild(option);
     }
     
+    // Pulisci i campi
+    document.getElementById('payslipHours').value = '';
+    document.getElementById('payslipAmount').value = '';
+
     modal.classList.add('active');
 }
 
@@ -708,18 +898,44 @@ async function handlePayslipSubmit(e) {
     e.preventDefault();
     
     const monthValue = document.getElementById('payslipMonth').value;
-    const [year, month] = monthValue.split('-').map(Number);
+    const [year, month] = monthValue.split('-').map(Number); // month è 0-based
     
+    const payslipHours = parseFloat(document.getElementById('payslipHours').value);
+    const payslipAmount = parseFloat(document.getElementById('payslipAmount').value);
+    
+    // 1. Segna i turni come pagati
     shifts.forEach(shift => {
         const d = new Date(shift.date);
-        if (d.getFullYear() === year && d.getMonth() === month && !isShiftExtra(shift.date)) {
+        // Segna come 'paid' solo i turni di contratto (che non sono extra per data)
+        if (d.getFullYear() === year && d.getMonth() === month && !isShiftExtra(shift.date)) { 
             shift.status = 'paid';
         }
     });
     
+    // 2. Calcola e salva la nuova tariffa se i dati sono forniti
+    let rateUpdated = false;
+    if (payslipHours > 0 && payslipAmount >= 0) {
+        const newRate = payslipAmount / payslipHours;
+        userSettings.contractRate = newRate;
+        
+        // Salva le impostazioni con la nuova tariffa
+        rateUpdated = await saveSettings();
+    }
+    
+    // 3. Salva i turni e aggiorna la dashboard
     await saveShifts();
     closeModal('payslipModal');
     document.getElementById('payslipForm').reset();
     updateDashboard();
-    alert('Busta paga registrata con successo!');
+    
+    // Se la vista attiva è il riepilogo, aggiornala
+    if (document.getElementById('summaryView').classList.contains('active')) {
+        updateSummaryView();
+    }
+    
+    let message = 'Busta paga registrata con successo! Le ore di contratto del mese sono state segnate come pagate.';
+    if (rateUpdated) {
+        message += ` La tariffa oraria contrattuale è stata aggiornata a €${userSettings.contractRate.toFixed(2)}/h.`;
+    }
+    alert(message);
 }

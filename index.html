@@ -199,7 +199,7 @@
                 </div>
 
                 <div class="payment-section">
-                    <h3>Stato Pagamenti</h3>
+                    <h3>Stato Pagamenti (Cumulativo)</h3>
                     <div class="payment-grid">
                         <div class="payment-card">
                             <p class="payment-label">Pagato in Busta</p>
@@ -221,7 +221,63 @@
                 </div>
             </div>
 
-            <!-- Shifts View -->
+            <div id="summaryView" class="view">
+                <div class="summary-section">
+                    <div class="view-header">
+                        <h2>Riepilogo Dettagliato</h2>
+                        <div class="filter-group">
+                            <label>Mese:</label>
+                            <select id="monthFilter">
+                                <option value="">Tutti</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="summary-stats">
+                        <div class="summary-card">
+                            <p class="summary-label">Ore Totali</p>
+                            <p class="summary-value" id="summaryTotalHours">0h</p>
+                        </div>
+                        <div class="summary-card">
+                            <p class="summary-label">Ore Contratto</p>
+                            <p class="summary-value" id="summaryContractHours">0h <span id="summaryContractEarnings"
+                                    class="summary-earnings">(€0)</span></p>
+                        </div>
+                        <div class="summary-card">
+                            <p class="summary-label">Ore Extra</p>
+                            <p class="summary-value" id="summaryExtraHours">0h <span id="summaryExtraEarnings"
+                                    class="summary-earnings">(€0)</span></p>
+                        </div>
+                        <div class="summary-card">
+                            <p class="summary-label">Guadagno Totale</p>
+                            <p class="summary-value" id="summaryTotalEarnings">€0</p>
+                        </div>
+                    </div>
+
+                    <div class="table-container">
+                        <table class="shifts-table">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Entrata</th>
+                                    <th>Uscita</th>
+                                    <th>Ore</th>
+                                    <th>Tipo</th>
+                                    <th>Stato</th>
+                                    <th>Note</th>
+                                    <th>Azioni</th>
+                                </tr>
+                            </thead>
+                            <tbody id="summaryTableBody">
+                                <tr>
+                                    <td colspan="8" class="empty-state">Nessun turno da visualizzare</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
             <div id="shiftsView" class="view">
                 <div class="view-header">
                     <h2>Gestione Turni</h2>
@@ -235,7 +291,6 @@
                     </button>
                 </div>
 
-                <!-- Add Shift Form -->
                 <div id="shiftForm" class="form-card" style="display: none;">
                     <h3 id="formTitle">Nuovo Turno</h3>
                     <form id="shiftFormElement">
@@ -270,61 +325,6 @@
                 </div>
             </div>
 
-            <!-- Summary View -->
-            <div id="summaryView" class="view">
-                <div class="view-header">
-                    <h2>Riepilogo Dettagliato</h2>
-                    <div class="filter-group">
-                        <label>Mese:</label>
-                        <select id="monthFilter">
-                            <option value="">Tutti</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="summary-stats">
-                    <div class="summary-card">
-                        <p class="summary-label">Ore Totali</p>
-                        <p class="summary-value" id="summaryTotalHours">0h</p>
-                    </div>
-                    <div class="summary-card">
-                        <p class="summary-label">Ore Contratto</p>
-                        <p class="summary-value" id="summaryContractHours">0h</p>
-                    </div>
-                    <div class="summary-card">
-                        <p class="summary-label">Ore Extra</p>
-                        <p class="summary-value" id="summaryExtraHours">0h</p>
-                    </div>
-                    <div class="summary-card">
-                        <p class="summary-label">Guadagno Totale</p>
-                        <p class="summary-value" id="summaryTotalEarnings">€0</p>
-                    </div>
-                </div>
-
-                <div class="table-container">
-                    <table class="shifts-table">
-                        <thead>
-                            <tr>
-                                <th>Data</th>
-                                <th>Entrata</th>
-                                <th>Uscita</th>
-                                <th>Ore</th>
-                                <th>Tipo</th>
-                                <th>Stato</th>
-                                <th>Note</th>
-                                <th>Azioni</th>
-                            </tr>
-                        </thead>
-                        <tbody id="summaryTableBody">
-                            <tr>
-                                <td colspan="8" class="empty-state">Nessun turno da visualizzare</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Settings View -->
             <div id="settingsView" class="view">
                 <h2>Impostazioni Profilo</h2>
 
@@ -379,26 +379,26 @@
         </main>
     </div>
 
-    <!-- Payslip Modal -->
     <div id="payslipModal" class="modal">
         <div class="modal-content">
             <h3>Registra Busta Paga</h3>
-            <p>Seleziona il mese della busta paga ricevuta:</p>
+            <p>Seleziona il mese della busta paga ricevuta e inserisci ore/netto per aggiornare la tariffa oraria
+                contrattuale.</p>
             <form id="payslipForm">
                 <div class="form-group">
                     <label>Mese</label>
                     <select id="payslipMonth" required></select>
                 </div>
                 <div class="form-group">
-                    <label>Ore Lavorate (opzionale)</label>
-                    <input type="number" id="payslipHours" step="0.1" min="0">
+                    <label>Ore Lavorate (da busta paga)</label>
+                    <input type="number" id="payslipHours" step="0.1" min="0" placeholder="Ore lavorate da contratto">
                 </div>
                 <div class="form-group">
-                    <label>Importo Netto (€) (opzionale)</label>
-                    <input type="number" id="payslipAmount" step="0.01" min="0">
+                    <label>Importo Netto (€) (da busta paga)</label>
+                    <input type="number" id="payslipAmount" step="0.01" min="0" placeholder="Netto ricevuto">
                 </div>
                 <div class="form-actions">
-                    <button type="submit" class="btn btn-primary">Conferma</button>
+                    <button type="submit" class="btn btn-primary">Conferma e Aggiorna Tariffa</button>
                     <button type="button" class="btn btn-secondary"
                         onclick="closeModal('payslipModal')">Annulla</button>
                 </div>
@@ -406,7 +406,7 @@
         </div>
     </div>
 
-    <script src="script.js?v=2"></script>
+    <script src="script.js?v=4"></script>
 </body>
 
 </html>
