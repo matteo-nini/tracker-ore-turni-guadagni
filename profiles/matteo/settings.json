@@ -1,7 +1,5 @@
 {
-    "CONTRACT_START": "2025-10-21",
-    "WEEKLY_HOURS": 18,
-    "OCTOBER_HOURS": 32.39999999999999857891452847979962825775146484375,
-    "OCTOBER_PAYOUT": 300,
-    "EXTRA_RATE": 10
+    "contractStartDate": "2025-10-21",
+    "weeklyHours": 18,
+    "extraRate": 10
 }
