@@ -141,15 +141,11 @@ function handleLogout() {
 async function loadUserData() {
     try {
         const settingsResponse = await fetch(API_BASE + `get_settings.php?username=${currentUser}`, {method: 'GET'});
+
         userSettings = await settingsResponse.json();
-        
         const shiftsResponse = await fetch(API_BASE + `get_shifts.php?username=${currentUser}`, {method: 'GET'});
         const shiftsData = await shiftsResponse.text();
         shifts = parseCSV(shiftsData);
-        
-        console.log(userSettings)
-        console.log(shifts)
-        
         updateDashboard();
     } catch (error) {
         console.error('Error loading user data:', error);
@@ -159,21 +155,23 @@ async function loadUserData() {
 function parseCSV(csv) {
     const lines = csv.trim().split('\n');
     if (lines.length <= 1) return [];
-    
+
     const data = [];
     for (let i = 1; i < lines.length; i++) {
         const line = lines[i].trim();
         if (!line) continue;
-        
+
         const parts = line.split(',');
-        if (parts.length >= 4) {
+        if (parts.length >= 5) { // Ensure all fields are present
             data.push({
                 date: parts[0],
                 start: parts[1],
                 end: parts[2],
-                notes: parts[3] || '',
-                status: parts[4] || 'pending'
+                notes: parts[3],
+                status: parts[4]
             });
+        } else {
+            console.warn(`Riga non valida nel CSV: ${line}`);
         }
     }
     return data;
@@ -190,12 +188,20 @@ function shiftsToCSV(shiftsArray) {
 function calculateHours(start, end) {
     const [startHour, startMin] = start.split(':').map(Number);
     const [endHour, endMin] = end.split(':').map(Number);
+
     let hours = endHour - startHour;
     let minutes = endMin - startMin;
+
+    // Handle crossing midnight
+    if (hours < 0) {
+        hours += 24;
+    }
+
     if (minutes < 0) {
         hours--;
         minutes += 60;
     }
+
     return hours + minutes / 60;
 }
 
