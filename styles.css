@@ -289,10 +289,14 @@ body {
     flex: 1;
 }
 
-.stat-label {
+.stat-label,
+.stat-sub-value {
     font-size: 14px;
     color: var(--text-light);
-    margin-bottom: 4px;
+}
+
+.stat-sub-value {
+    font-size: 11px;
 }
 
 .stat-value {

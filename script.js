@@ -49,7 +49,7 @@ function setupEventListeners() {
     document.getElementById('registerPayslipBtn').addEventListener('click', showPayslipModal);
     document.getElementById('payslipForm').addEventListener('submit', handlePayslipSubmit);
     
-    // Il filtro è ora solo nella vista riepilogo, quindi l'handler rimane qui
+    // Il filtro è ora solo nella vista riepilogo
     const monthFilter = document.getElementById('monthFilter');
     if (monthFilter) {
         monthFilter.addEventListener('change', updateSummaryView);
@@ -64,7 +64,7 @@ function showScreen(screenId) {
 function switchView(viewName) {
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     document.querySelectorAll('.nav-item[data-view]').forEach(i => i.classList.remove('active'));
-    // Controlla se l'elemento esiste prima di aggiungere la classe 'active'
+    
     const viewElement = document.getElementById(viewName + 'View');
     if (viewElement) {
         viewElement.classList.add('active');
@@ -77,7 +77,7 @@ function switchView(viewName) {
     if (viewName === 'dashboard') updateDashboard(); 
     if (viewName === 'shifts') updateShiftsList();
     if (viewName === 'settings') loadSettings();
-    if (viewName === 'summary') updateSummaryView(); // <-- NUOVO: Aggiorna il riepilogo solo quando si entra
+    if (viewName === 'summary') updateSummaryView(); // Aggiorna solo quando si entra
 }
 
 async function handleLogin(e) {
@@ -438,8 +438,6 @@ function updateDashboard() {
     document.getElementById('pendingContract').textContent = '€' + pendingContract.toFixed(2);
     document.getElementById('paidExtra').textContent = '€' + paidExtra.toFixed(2);
     document.getElementById('pendingExtra').textContent = '€' + pendingExtra.toFixed(2);
-    
-    // RIMOSSO: updateSummaryView() NON viene più chiamato qui.
 }
 
 function showShiftForm(editIndex = null) {
@@ -599,10 +597,9 @@ function updateShiftsList() {
 }
 
 function updateSummaryView() {
-    // Aggiungo un controllo per evitare l'errore se la vista non è attiva
+    // Aggiungo un controllo per evitare l'errore se la vista non è attiva (dovrebbe essere stata risolta, ma meglio tenere il controllo)
     const summaryTotalHoursEl = document.getElementById('summaryTotalHours');
     if (!summaryTotalHoursEl) {
-        // Se l'elemento principale non esiste, esci
         return; 
     }
     
@@ -611,7 +608,7 @@ function updateSummaryView() {
     
     let currentFilterYear, currentFilterMonth;
     
-    // Se c'è un filtro, analizza solo i turni di quel mese
+    // 1. FILTRAGGIO
     if (monthFilter) {
         const [year, month] = monthFilter.split('-').map(Number);
         currentFilterYear = year;
@@ -624,14 +621,13 @@ function updateSummaryView() {
     let contractHours = 0;
     let extraHours = 0;
     
-    // Calcola l'allocazione Contratto/Extra sul periodo filtrato/totale.
+    // 2. CALCOLO ALLOCAZIONE (necessario fare l'allocazione su tutti i turni se il filtro è 'Tutti')
     if (monthFilter) {
-        // Se c'è un filtro, usiamo calculateMonthlyStats per il mese filtrato
         const monthStats = calculateMonthlyStats(currentFilterMonth, currentFilterYear);
         contractHours = monthStats.contractHours;
         extraHours = monthStats.extraHours;
     } else {
-        // Se NON c'è filtro, dobbiamo ricalcolare l'allocazione su tutti i turni
+        // Ricalcolo dell'allocazione su tutti i turni (non solo quelli in shiftsToAnalyze)
         const weeklyContract = userSettings?.weeklyHours || 18;
         const weekContractUsed = new Map();
         
@@ -659,6 +655,7 @@ function updateSummaryView() {
                 weekContractUsed.set(key, used + allocatedContract);
             }
             
+            // Si sommano tutte le ore (per il riepilogo "Tutti")
             contractHours += allocatedContract;
             extraHours += allocatedExtra;
         });
@@ -671,19 +668,23 @@ function updateSummaryView() {
     const extraEarnings = extraHours * extraRate;
     const totalEarnings = contractEarnings + extraEarnings;
     
-    // Inietta le ore e i guadagni negli elementi (ora usiamo summaryTotalHoursEl che è garantito esistere)
+    // 3. AGGIORNAMENTO STATISTICHE
     summaryTotalHoursEl.textContent = totalHours.toFixed(1) + 'h';
-    
     document.getElementById('summaryContractHours').textContent = contractHours.toFixed(1) + 'h';
     document.getElementById('summaryContractEarnings').textContent = '(€' + contractEarnings.toFixed(2) + ')';
-    
     document.getElementById('summaryExtraHours').textContent = extraHours.toFixed(1) + 'h';
     document.getElementById('summaryExtraEarnings').textContent = '(€' + extraEarnings.toFixed(2) + ')';
-    
     document.getElementById('summaryTotalEarnings').textContent = '€' + totalEarnings.toFixed(2);
     
     const tbody = document.getElementById('summaryTableBody');
     
+    // <--- CONTROLLO CRITICO AGGIUNTO --->
+    if (!tbody) {
+        console.error("Errore: Elemento <tbody> con ID 'summaryTableBody' non trovato nel DOM.");
+        return; 
+    }
+    
+    // 4. AGGIORNAMENTO TABELLA
     if (shiftsToAnalyze.length === 0) {
         tbody.innerHTML = '<tr><td colspan="8" class="empty-state">Nessun turno da visualizzare</td></tr>';
         return;
@@ -737,15 +738,14 @@ function updateSummaryView() {
         tbody.appendChild(row);
     });
     
-    // Popola il filtro la prima volta (se esiste)
-    if (document.getElementById('monthFilter').options.length === 1) {
+    // 5. POPOLA FILTRO
+    if (document.getElementById('monthFilter') && document.getElementById('monthFilter').options.length === 1) {
         populateMonthFilter();
     }
 }
 
 function populateMonthFilter() {
     const select = document.getElementById('monthFilter');
-    // Aggiungo controllo per evitare errore se select non esiste (non nella vista corretta)
     if (!select) return; 
     
     const months = new Set();

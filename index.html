@@ -222,59 +222,60 @@
             </div>
 
             <div id="summaryView" class="view">
-                <div class="summary-section">
-                    <div class="view-header">
-                        <h2>Riepilogo Dettagliato</h2>
-                        <div class="filter-group">
-                            <label>Mese:</label>
-                            <select id="monthFilter">
-                                <option value="">Tutti</option>
-                            </select>
-                        </div>
+                <h2>Riepilogo e Statistiche</h2>
+                <div class="view-header">
+                    <div class="filter-group">
+                        <label for="monthFilter">Filtra per Mese:</label>
+                        <select id="monthFilter">
+                            <option value="">Tutti</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <span class="stat-label">Ore Totali nel Periodo</span>
+                        <span class="stat-value" id="summaryTotalHours">0.0h</span>
                     </div>
 
-                    <div class="summary-stats">
-                        <div class="summary-card">
-                            <p class="summary-label">Ore Totali</p>
-                            <p class="summary-value" id="summaryTotalHours">0h</p>
-                        </div>
-                        <div class="summary-card">
-                            <p class="summary-label">Ore Contratto</p>
-                            <p class="summary-value" id="summaryContractHours">0h <span id="summaryContractEarnings"
-                                    class="summary-earnings">(€0)</span></p>
-                        </div>
-                        <div class="summary-card">
-                            <p class="summary-label">Ore Extra</p>
-                            <p class="summary-value" id="summaryExtraHours">0h <span id="summaryExtraEarnings"
-                                    class="summary-earnings">(€0)</span></p>
-                        </div>
-                        <div class="summary-card">
-                            <p class="summary-label">Guadagno Totale</p>
-                            <p class="summary-value" id="summaryTotalEarnings">€0</p>
-                        </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Ore Contratto</span>
+                        <span class="stat-value" id="summaryContractHours">0.0h</span>
+                        <span class="stat-sub-value" id="summaryContractEarnings">(€0.00)</span>
                     </div>
 
-                    <div class="table-container">
-                        <table class="shifts-table">
-                            <thead>
-                                <tr>
-                                    <th>Data</th>
-                                    <th>Entrata</th>
-                                    <th>Uscita</th>
-                                    <th>Ore</th>
-                                    <th>Tipo</th>
-                                    <th>Stato</th>
-                                    <th>Note</th>
-                                    <th>Azioni</th>
-                                </tr>
-                            </thead>
-                            <tbody id="summaryTableBody">
-                                <tr>
-                                    <td colspan="8" class="empty-state">Nessun turno da visualizzare</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                    <div class="stat-card">
+                        <span class="stat-label">Ore Extra</span>
+                        <span class="stat-value" id="summaryExtraHours">0.0h</span>
+                        <span class="stat-sub-value" id="summaryExtraEarnings">(€0.00)</span>
                     </div>
+
+                    <div class="stat-card total-earnings">
+                        <span class="stat-label">Guadagno Totale Stimato</span>
+                        <span class="stat-value" id="summaryTotalEarnings">€0.00</span>
+                    </div>
+                </div>
+                <div class="shifts-container">
+                    <h3>Turni Dettagliati</h3>
+                    <table class="shifts-table">
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Entrata</th>
+                                <th>Uscita</th>
+                                <th>Ore</th>
+                                <th>Tipo</th>
+                                <th>Stato</th>
+                                <th>Note</th>
+                                <th>Azioni</th>
+                            </tr>
+                        </thead>
+                        <tbody id="summaryTableBody">
+                            <tr>
+                                <td colspan="8" class="empty-state">Nessun turno da visualizzare</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
