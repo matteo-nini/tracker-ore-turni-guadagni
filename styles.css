@@ -159,6 +159,15 @@ body {
     background: #dc2626;
 }
 
+.btn-success {
+    background: var(--success);
+    color: white;
+}
+
+.btn-success:hover {
+    background: #059669;
+}
+
 /* Navbar */
 .navbar {
     background: var(--surface);
@@ -240,6 +249,8 @@ body {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 16px;
 }
 
 .view-header .btn {
@@ -296,13 +307,238 @@ body {
 }
 
 .stat-sub-value {
-    font-size: 11px;
+    font-size: 12px;
+    margin-top: 4px;
 }
 
 .stat-value {
     font-size: 28px;
     font-weight: 700;
     color: var(--text);
+}
+
+/* Calendar Styles */
+.calendar-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.month-year-label {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+    min-width: 150px;
+    text-align: center;
+}
+
+.shift-quick-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.shift-quick-actions .btn {
+    width: auto;
+}
+
+.active-shift-card {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 24px;
+    box-shadow: var(--shadow-lg);
+}
+
+.active-shift-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.active-shift-info h4 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.active-shift-info p {
+    font-size: 14px;
+    margin: 4px 0;
+    opacity: 0.9;
+}
+
+.calendar-grid {
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: var(--shadow);
+}
+
+.calendar-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.calendar-day-name {
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-light);
+    padding: 12px 4px;
+    text-transform: uppercase;
+}
+
+.calendar-days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+}
+
+.calendar-day {
+    aspect-ratio: 1;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    background: var(--surface);
+    min-height: 80px;
+    display: flex;
+    flex-direction: column;
+}
+
+.calendar-day:hover {
+    border-color: var(--primary);
+    background: rgba(59, 130, 246, 0.05);
+}
+
+.calendar-day.other-month {
+    background: var(--background);
+    opacity: 0.5;
+}
+
+.calendar-day.today {
+    border: 2px solid var(--primary);
+    background: rgba(59, 130, 246, 0.05);
+}
+
+.calendar-day-number {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+}
+
+.calendar-day.other-month .calendar-day-number {
+    color: var(--text-light);
+}
+
+.calendar-shifts {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+}
+
+.calendar-shift-item {
+    font-size: 11px;
+    padding: 2px 4px;
+    border-radius: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--primary);
+    border-left: 3px solid var(--primary);
+}
+
+.calendar-shift-item.extra {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warning);
+    border-left-color: var(--warning);
+}
+
+.calendar-shift-more {
+    font-size: 10px;
+    color: var(--text-light);
+    padding: 2px 4px;
+    cursor: pointer;
+}
+
+.calendar-shift-more:hover {
+    color: var(--primary);
+}
+
+/* Dashboard Sections */
+.dashboard-section {
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: var(--shadow);
+    margin-bottom: 24px;
+}
+
+.dashboard-section h3 {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 20px;
+}
+
+.upcoming-shifts-list {
+    display: grid;
+    gap: 12px;
+}
+
+.upcoming-shift-card {
+    background: var(--background);
+    border-radius: 8px;
+    padding: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-left: 4px solid var(--primary);
+    transition: all 0.2s;
+}
+
+.upcoming-shift-card:hover {
+    transform: translateX(4px);
+    box-shadow: var(--shadow);
+}
+
+.upcoming-shift-card.extra {
+    border-left-color: var(--warning);
+}
+
+.upcoming-shift-info {
+    flex: 1;
+}
+
+.upcoming-shift-date {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+}
+
+.upcoming-shift-time {
+    font-size: 13px;
+    color: var(--text-light);
+}
+
+.upcoming-shift-hours {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--primary);
+}
+
+.chart-container {
+    height: 300px;
+    position: relative;
 }
 
 /* Payment Section */
@@ -420,6 +656,12 @@ body {
     color: var(--primary);
 }
 
+.shift-notes {
+    font-size: 13px;
+    color: var(--text-light);
+    margin-top: 4px;
+}
+
 .shift-badge {
     display: inline-block;
     padding: 4px 12px;
@@ -517,6 +759,19 @@ body {
     border-radius: 12px;
     box-shadow: var(--shadow);
     overflow: hidden;
+}
+
+.shifts-container {
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: var(--shadow);
+}
+
+.shifts-container h3 {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 20px;
 }
 
 .shifts-table {
@@ -632,6 +887,64 @@ body {
     margin-bottom: 24px;
 }
 
+/* Day Detail Modal */
+.day-detail-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.day-detail-modal.active {
+    display: flex;
+}
+
+.day-detail-content {
+    background: var(--surface);
+    border-radius: 16px;
+    padding: 32px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: var(--shadow-lg);
+}
+
+.day-detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.day-detail-header h3 {
+    font-size: 24px;
+    font-weight: 700;
+}
+
+.day-detail-shifts {
+    display: grid;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.day-shift-item {
+    background: var(--background);
+    border-radius: 8px;
+    padding: 16px;
+    border-left: 4px solid var(--primary);
+}
+
+.day-shift-item.extra {
+    border-left-color: var(--warning);
+}
+
 /* Empty State */
 .empty-state {
     text-align: center;
@@ -656,6 +969,25 @@ body {
 
     .view h2 {
         font-size: 24px;
+    }
+
+    .view-header {
+        flex-direction: column;
+        gap: 16px;
+        align-items: stretch;
+    }
+
+    .calendar-controls {
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .shift-quick-actions {
+        flex-direction: column;
+    }
+
+    .shift-quick-actions .btn {
+        width: 100%;
     }
 
     .stats-grid {
@@ -683,5 +1015,32 @@ body {
 
     .shifts-table {
         min-width: 800px;
+    }
+
+    .calendar-day {
+        min-height: 60px;
+        padding: 4px;
+    }
+
+    .calendar-day-number {
+        font-size: 12px;
+    }
+
+    .calendar-shift-item {
+        font-size: 10px;
+    }
+
+    .chart-container {
+        height: 200px;
+    }
+
+    .payment-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .upcoming-shift-card {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
     }
 }

@@ -89,7 +89,7 @@
                         <rect width="7" height="9" x="14" y="12" rx="1" />
                         <rect width="7" height="5" x="3" y="16" rx="1" />
                     </svg>
-                    Dashboard
+                    <span>Dashboard</span>
                 </button>
                 <button class="nav-item" data-view="shifts">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
@@ -99,7 +99,7 @@
                         <rect width="18" height="18" x="3" y="4" rx="2" />
                         <path d="M3 10h18" />
                     </svg>
-                    Turni
+                    <span>Turni</span>
                 </button>
                 <button class="nav-item" data-view="summary">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
@@ -108,7 +108,7 @@
                         <line x1="18" x2="18" y1="20" y2="4" />
                         <line x1="6" x2="6" y1="20" y2="16" />
                     </svg>
-                    Riepilogo
+                    <span>Riepilogo</span>
                 </button>
                 <button class="nav-item" data-view="settings">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
@@ -117,7 +117,7 @@
                             d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
                         <circle cx="12" cy="12" r="3" />
                     </svg>
-                    Impostazioni
+                    <span>Impostazioni</span>
                 </button>
                 <button id="logoutBtn" class="nav-item">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
@@ -126,7 +126,7 @@
                         <polyline points="16 17 21 12 16 7" />
                         <line x1="21" x2="9" y1="12" y2="12" />
                     </svg>
-                    Esci
+                    <span>Esci</span>
                 </button>
             </div>
         </nav>
@@ -135,6 +135,8 @@
             <!-- Dashboard View -->
             <div id="dashboardView" class="view active">
                 <h2>Dashboard</h2>
+
+                <!-- Main Stats -->
                 <div class="stats-grid">
                     <div class="stat-card">
                         <div class="stat-icon">
@@ -148,6 +150,7 @@
                         <div class="stat-info">
                             <p class="stat-label">Ore Settimana Corrente</p>
                             <p class="stat-value" id="weekHours">0h</p>
+                            <p class="stat-sub-value" id="weekProgress">0% dell'obiettivo</p>
                         </div>
                     </div>
                     <div class="stat-card">
@@ -164,6 +167,7 @@
                         <div class="stat-info">
                             <p class="stat-label">Ore Mese Corrente</p>
                             <p class="stat-value" id="monthHours">0h</p>
+                            <p class="stat-sub-value" id="monthComparison">--</p>
                         </div>
                     </div>
                     <div class="stat-card">
@@ -198,6 +202,23 @@
                     </div>
                 </div>
 
+                <!-- Upcoming Shifts -->
+                <div class="dashboard-section">
+                    <h3>Prossimi Turni</h3>
+                    <div id="upcomingShifts" class="upcoming-shifts-list">
+                        <p class="empty-state">Nessun turno programmato</p>
+                    </div>
+                </div>
+
+                <!-- Weekly Chart -->
+                <div class="dashboard-section">
+                    <h3>Andamento Ore Settimanali (Ultimo Mese)</h3>
+                    <div class="chart-container">
+                        <canvas id="weeklyChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Payment Status -->
                 <div class="payment-section">
                     <h3>Stato Pagamenti (Cumulativo)</h3>
                     <div class="payment-grid">
@@ -221,6 +242,102 @@
                 </div>
             </div>
 
+            <!-- Shifts View (Calendar) -->
+            <div id="shiftsView" class="view">
+                <div class="view-header">
+                    <h2>Calendario Turni</h2>
+                    <div class="calendar-controls">
+                        <button id="prevMonthBtn" class="icon-btn">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <polyline points="15 18 9 12 15 6"></polyline>
+                            </svg>
+                        </button>
+                        <span id="currentMonthYear" class="month-year-label">Novembre 2025</span>
+                        <button id="nextMonthBtn" class="icon-btn">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <polyline points="9 18 15 12 9 6"></polyline>
+                            </svg>
+                        </button>
+                        <button id="todayBtn" class="btn btn-secondary" style="margin-left: 16px;">Oggi</button>
+                    </div>
+                    <div class="shift-quick-actions">
+                        <button id="startShiftBtn" class="btn btn-success">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                            </svg>
+                            Inizia Turno
+                        </button>
+                        <button id="endShiftBtn" class="btn btn-danger" style="display: none;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <rect x="6" y="6" width="12" height="12"></rect>
+                            </svg>
+                            Termina Turno
+                        </button>
+                        <button id="addShiftBtn" class="btn btn-primary">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path d="M5 12h14" />
+                                <path d="M12 5v14" />
+                            </svg>
+                            Aggiungi Turno Manuale
+                        </button>
+                    </div>
+                </div>
+
+                <div id="activeShiftIndicator" class="active-shift-card" style="display: none;">
+                    <div class="active-shift-content">
+                        <div class="active-shift-info">
+                            <h4>Turno in Corso</h4>
+                            <p>Iniziato alle: <span id="activeShiftStartTime">--:--</span></p>
+                            <p>Durata: <span id="activeShiftDuration">0h 0m</span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="shiftForm" class="form-card" style="display: none;">
+                    <h3 id="formTitle">Nuovo Turno</h3>
+                    <form id="shiftFormElement">
+                        <input type="hidden" id="editShiftIndex">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Data</label>
+                                <input type="date" id="shiftDate" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Entrata</label>
+                                <input type="time" id="shiftStart" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Uscita</label>
+                                <input type="time" id="shiftEnd" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Note</label>
+                            <input type="text" id="shiftNotes" placeholder="Note opzionali">
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">Salva</button>
+                            <button type="button" id="cancelShiftBtn" class="btn btn-secondary">Annulla</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div id="calendar" class="calendar-grid">
+                    <!-- Calendar will be generated here -->
+                </div>
+            </div>
+
+            <!-- Summary View -->
             <div id="summaryView" class="view">
                 <h2>Riepilogo e Statistiche</h2>
                 <div class="view-header">
@@ -279,53 +396,7 @@
                 </div>
             </div>
 
-            <div id="shiftsView" class="view">
-                <div class="view-header">
-                    <h2>Gestione Turni</h2>
-                    <button id="addShiftBtn" class="btn btn-primary">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M5 12h14" />
-                            <path d="M12 5v14" />
-                        </svg>
-                        Aggiungi Turno
-                    </button>
-                </div>
-
-                <div id="shiftForm" class="form-card" style="display: none;">
-                    <h3 id="formTitle">Nuovo Turno</h3>
-                    <form id="shiftFormElement">
-                        <input type="hidden" id="editShiftIndex">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Data</label>
-                                <input type="date" id="shiftDate" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Entrata</label>
-                                <input type="time" id="shiftStart" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Uscita</label>
-                                <input type="time" id="shiftEnd" required>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Note</label>
-                            <input type="text" id="shiftNotes" placeholder="Note opzionali">
-                        </div>
-                        <div class="form-actions">
-                            <button type="submit" class="btn btn-primary">Salva</button>
-                            <button type="button" id="cancelShiftBtn" class="btn btn-secondary">Annulla</button>
-                        </div>
-                    </form>
-                </div>
-
-                <div class="shifts-list" id="shiftsList">
-                    <p class="empty-state">Nessun turno inserito. Clicca su "Aggiungi Turno" per iniziare.</p>
-                </div>
-            </div>
-
+            <!-- Settings View -->
             <div id="settingsView" class="view">
                 <h2>Impostazioni Profilo</h2>
 
@@ -380,6 +451,7 @@
         </main>
     </div>
 
+    <!-- Payslip Modal -->
     <div id="payslipModal" class="modal">
         <div class="modal-content">
             <h3>Registra Busta Paga</h3>
@@ -407,7 +479,33 @@
         </div>
     </div>
 
-    <script src="script.js?v=4"></script>
+    <!-- Day Detail Modal -->
+    <div id="dayDetailModal" class="day-detail-modal">
+        <div class="day-detail-content">
+            <div class="day-detail-header">
+                <h3 id="dayDetailTitle">Turni del Giorno</h3>
+                <button class="icon-btn" onclick="closeDayDetail()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div id="dayDetailShifts" class="day-detail-shifts">
+                <!-- Shifts will be shown here -->
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-primary" onclick="addShiftForDay()">Aggiungi Turno per questo Giorno</button>
+                <button class="btn btn-secondary" onclick="closeDayDetail()">Chiudi</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart.js Library -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- Main Script -->
+    <script src="script.js"></script>
 </body>
 
 </html>
