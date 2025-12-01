@@ -14,7 +14,6 @@ if (!isset($data['username']) || !isset($data['password'])) {
 $username = preg_replace('/[^a-zA-Z0-9_]/', '', $data['username']);
 $password = $data['password'];
 
-// Percorso corretto dalla cartella php
 $profilesFile = dirname(__DIR__) . '/profiles/profiles.json';
 
 if (!file_exists($profilesFile)) {
@@ -26,7 +25,12 @@ $profiles = json_decode(file_get_contents($profilesFile), true);
 
 if (isset($profiles[$username])) {
     if (password_verify($password, $profiles[$username]['password'])) {
-        echo json_encode(['success' => true]);
+        $role = isset($profiles[$username]['role']) ? $profiles[$username]['role'] : 'user';
+        echo json_encode([
+            'success' => true, 
+            'role' => $role,
+            'username' => $username
+        ]);
     } else {
         echo json_encode(['success' => false, 'message' => 'Password errata']);
     }

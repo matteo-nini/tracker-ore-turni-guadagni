@@ -1,4 +1,7 @@
 // Global state
+let currentUserRole = null; // NEW
+let globalShifts = []; // NEW
+let usersList = []; // NEW
 let currentUser = null;
 let userSettings = null;
 let shifts = [];
@@ -43,11 +46,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function initializeApp() {
     const savedUser = localStorage.getItem('currentUser');
-    if (savedUser) {
+    const savedRole = localStorage.getItem('currentUserRole');
+
+    if (savedUser && savedRole) {
         currentUser = savedUser;
+        currentUserRole = savedRole;
         loadUserData();
         showScreen('mainApp');
-    } else {
+        updateUIForRole(); // NEW
+   } else {
         showScreen('loginScreen');
     }
     setupEventListeners();
@@ -87,6 +94,60 @@ function setupEventListeners() {
     const monthFilter = document.getElementById('monthFilter');
     if (monthFilter) {
         monthFilter.addEventListener('change', updateSummaryView);
+    }
+
+    // Global calendar controls (NEW)
+    const prevMonthBtnGlobal = document.getElementById('prevMonthBtnGlobal');
+    const nextMonthBtnGlobal = document.getElementById('nextMonthBtnGlobal');
+    const todayBtnGlobal = document.getElementById('todayBtnGlobal');
+    const addGlobalShiftBtn = document.getElementById('addGlobalShiftBtn');
+
+    if (prevMonthBtnGlobal) prevMonthBtnGlobal.addEventListener('click', () => changeGlobalCalendarMonth(-1));
+    if (nextMonthBtnGlobal) nextMonthBtnGlobal.addEventListener('click', () => changeGlobalCalendarMonth(1));
+    if (todayBtnGlobal) todayBtnGlobal.addEventListener('click', goToTodayGlobal);
+    if (addGlobalShiftBtn) addGlobalShiftBtn.addEventListener('click', () => showGlobalShiftForm());
+
+    // Global shift form (NEW)
+    const globalShiftForm = document.getElementById('globalShiftFormElement');
+    const cancelGlobalShiftBtn = document.getElementById('cancelGlobalShiftBtn');
+    if (globalShiftForm) globalShiftForm.addEventListener('submit', handleSaveGlobalShift);
+    if (cancelGlobalShiftBtn) cancelGlobalShiftBtn.addEventListener('click', hideGlobalShiftForm);
+}
+
+// NEW: Update UI based on user role
+function updateUIForRole() {
+    const isAdmin = currentUserRole === 'admin';
+    
+    // Hide/show navigation items
+    const dashboardNav = document.querySelector('.nav-item[data-view="dashboard"]');
+    const shiftsNav = document.querySelector('.nav-item[data-view="shifts"]');
+    const summaryNav = document.querySelector('.nav-item[data-view="summary"]');
+    const settingsNav = document.querySelector('.nav-item[data-view="settings"]');
+    const globalCalendarNav = document.querySelector('.nav-item[data-view="globalCalendar"]');
+    const logsNav = document.querySelector('.nav-item[data-view="logs"]');
+    
+    if (isAdmin) {
+        // Admin vede solo: Calendario Globale, Logs, Logout
+        if (dashboardNav) dashboardNav.style.display = 'none';
+        if (shiftsNav) shiftsNav.style.display = 'none';
+        if (summaryNav) summaryNav.style.display = 'none';
+        if (settingsNav) settingsNav.style.display = 'none';
+        if (globalCalendarNav) globalCalendarNav.style.display = 'flex';
+        if (logsNav) logsNav.style.display = 'flex';
+        
+        // Switch to global calendar by default
+        switchView('globalCalendar');
+    } else {
+        // User normale vede tutto tranne Logs
+        if (dashboardNav) dashboardNav.style.display = 'flex';
+        if (shiftsNav) shiftsNav.style.display = 'flex';
+        if (summaryNav) summaryNav.style.display = 'flex';
+        if (settingsNav) settingsNav.style.display = 'flex';
+        if (globalCalendarNav) globalCalendarNav.style.display = 'flex';
+        if (logsNav) logsNav.style.display = 'none';
+        
+        // Switch to dashboard by default
+        switchView('dashboard');
     }
 }
 
@@ -576,23 +637,106 @@ function showScreen(screenId) {
     document.getElementById(screenId).classList.add('active');
 }
 
+// ============================================
+// LOGS VIEWER (ADMIN ONLY)
+// ============================================
+
+async function loadLogs() {
+    if (currentUserRole !== 'admin') return;
+    
+    try {
+        const response = await fetch(API_BASE + `get_logs.php?username=${currentUser}`, {method: 'GET'});
+        const result = await response.json();
+        
+        if (result.error) {
+            console.error('Error loading logs:', result.error);
+            return;
+        }
+        
+        const logsContainer = document.getElementById('logsContainer');
+        if (!logsContainer) return;
+        
+        if (!result.logs || result.logs.length === 0) {
+            logsContainer.innerHTML = '<p class="empty-state">Nessun log disponibile</p>';
+            return;
+        }
+        
+        logsContainer.innerHTML = '';
+        
+        result.logs.forEach(log => {
+            const div = document.createElement('div');
+            div.className = 'log-entry';
+            
+            // Parse log entry to highlight different parts
+            const timestampMatch = log.match(/\[(.*?)\]/);
+            const timestamp = timestampMatch ? timestampMatch[1] : '';
+            const message = log.replace(/\[.*?\]\s*/, '');
+            
+            div.innerHTML = `
+                <div class="log-timestamp">${timestamp}</div>
+                <div class="log-message">${message}</div>
+            `;
+            
+            logsContainer.appendChild(div);
+        });
+    } catch (error) {
+        console.error('Load logs error:', error);
+    }
+}
+
+// Trova questa funzione nel tuo script.js e sostituiscila completamente:
+
 function switchView(viewName) {
+    console.log('Switching to view:', viewName); // DEBUG
+    
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     document.querySelectorAll('.nav-item[data-view]').forEach(i => i.classList.remove('active'));
     
     const viewElement = document.getElementById(viewName + 'View');
     if (viewElement) {
         viewElement.classList.add('active');
+        console.log('View element found and activated:', viewName); // DEBUG
+    } else {
+        console.error('View element not found:', viewName + 'View'); // DEBUG
     }
+    
     const navElement = document.querySelector(`.nav-item[data-view="${viewName}"]`);
     if (navElement) {
         navElement.classList.add('active');
     }
     
-    if (viewName === 'dashboard') updateDashboard();
-    if (viewName === 'shifts') renderCalendar();
-    if (viewName === 'settings') loadSettings();
-    if (viewName === 'summary') updateSummaryView();
+    // Load view-specific data
+    if (viewName === 'dashboard' && currentUserRole !== 'admin') {
+        console.log('Loading dashboard...'); // DEBUG
+        updateDashboard();
+    }
+    if (viewName === 'shifts' && currentUserRole !== 'admin') {
+        console.log('Loading shifts calendar...'); // DEBUG
+        renderCalendar();
+    }
+    if (viewName === 'settings' && currentUserRole !== 'admin') {
+        console.log('Loading settings...'); // DEBUG
+        loadSettings();
+    }
+    if (viewName === 'summary' && currentUserRole !== 'admin') {
+        console.log('Loading summary...'); // DEBUG
+        updateSummaryView();
+    }
+    if (viewName === 'globalCalendar') {
+        console.log('Loading global calendar...'); // DEBUG
+        console.log('Global shifts data:', globalShifts); // DEBUG
+        renderGlobalCalendar();
+    }
+    if (viewName === 'logs' && currentUserRole === 'admin') {
+        console.log('Loading logs...'); // DEBUG
+        loadLogs();
+    }
+}
+
+// Update showScreen to handle role-based views
+function showScreen(screenId) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(screenId).classList.add('active');
 }
 
 async function handleLogin(e) {
@@ -611,10 +755,12 @@ async function handleLogin(e) {
         
         if (result.success) {
             currentUser = username;
+            currentUserRole = result.role; // NEW: Salva il ruolo
             localStorage.setItem('currentUser', username);
+            localStorage.setItem('currentUserRole', result.role);
             await loadUserData();
             showScreen('mainApp');
-            switchView('dashboard');
+            updateUIForRole(); // NEW: Aggiorna UI
         } else {
             alert('Username o password errati');
         }
@@ -639,7 +785,7 @@ async function handleRegister(e) {
         const response = await fetch(API_BASE + 'register.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password })
+            body: JSON.stringify({ username, password, role: 'user' }) // Default: user
         });
         
         const result = await response.json();
@@ -660,10 +806,13 @@ async function handleRegister(e) {
 function handleLogout() {
     if (confirm('Sei sicuro di voler uscire?')) {
         currentUser = null;
+        currentUserRole = null;
         userSettings = null;
         shifts = [];
+        globalShifts = [];
         activeShift = null;
         localStorage.removeItem('currentUser');
+        localStorage.removeItem('currentUserRole');
         localStorage.removeItem('activeShift');
         showScreen('loginScreen');
         document.getElementById('loginForm').reset();
@@ -672,6 +821,20 @@ function handleLogout() {
 
 async function loadUserData() {
     try {
+        // Load users list (per assegnazione turni)
+        const usersResponse = await fetch(API_BASE + 'get_users_list.php', {method: 'GET'});
+        usersList = await usersResponse.json();
+        
+        // Load global shifts
+        const globalResponse = await fetch(API_BASE + 'get_global_shifts.php', {method: 'GET'});
+        globalShifts = await globalResponse.json();
+        
+        if (currentUserRole === 'admin') {
+            // Admin non ha settings o shifts personali
+            return;
+        }
+        
+        // Load personal settings and shifts (solo per utenti normali)
         const settingsResponse = await fetch(API_BASE + `get_settings.php?username=${currentUser}`, {method: 'GET'});
         userSettings = await settingsResponse.json();
         
@@ -682,9 +845,37 @@ async function loadUserData() {
         const shiftsResponse = await fetch(API_BASE + `get_shifts.php?username=${currentUser}`, {method: 'GET'});
         const shiftsData = await shiftsResponse.text();
         shifts = parseCSV(shiftsData);
+        
+        // Sync personal shifts to global calendar
+        await syncPersonalToGlobal();
+        
         updateDashboard();
     } catch (error) {
         console.error('Error loading user data:', error);
+    }
+}
+
+// NEW: Sync personal shifts to global calendar
+async function syncPersonalToGlobal() {
+    if (currentUserRole === 'admin') return;
+    
+    try {
+        const response = await fetch(API_BASE + 'sync_shifts.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: currentUser })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success && result.added > 0) {
+            console.log(`Sincronizzati ${result.added} turni nel calendario globale`);
+            // Reload global shifts
+            const globalResponse = await fetch(API_BASE + 'get_global_shifts.php', {method: 'GET'});
+            globalShifts = await globalResponse.json();
+        }
+    } catch (error) {
+        console.error('Sync error:', error);
     }
 }
 
@@ -709,6 +900,378 @@ function parseCSV(csv) {
         }
     }
     return data;
+}
+
+// ============================================
+// GLOBAL CALENDAR FUNCTIONS
+// ============================================
+
+let currentGlobalCalendarDate = new Date();
+
+function changeGlobalCalendarMonth(direction) {
+    currentGlobalCalendarDate.setMonth(currentGlobalCalendarDate.getMonth() + direction);
+    renderGlobalCalendar();
+}
+
+function goToTodayGlobal() {
+    currentGlobalCalendarDate = new Date();
+    renderGlobalCalendar();
+}
+
+function renderGlobalCalendar() {
+    const calendar = document.getElementById('globalCalendar');
+    if (!calendar) return;
+    
+    const year = currentGlobalCalendarDate.getFullYear();
+    const month = currentGlobalCalendarDate.getMonth();
+    
+    // Update month/year label
+    const monthName = currentGlobalCalendarDate.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+    const label = document.getElementById('currentMonthYearGlobal');
+    if (label) {
+        label.textContent = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+    }
+    
+    // Get first day of month and total days
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDayOfWeek = (firstDay.getDay() + 6) % 7; // Monday = 0
+    
+    // Get previous month's last days
+    const prevMonthLastDay = new Date(year, month, 0).getDate();
+    
+    let html = '<div class="calendar-header">';
+    ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].forEach(day => {
+        html += `<div class="calendar-day-name">${day}</div>`;
+    });
+    html += '</div><div class="calendar-days">';
+    
+    // Previous month days
+    for (let i = startingDayOfWeek - 1; i >= 0; i--) {
+        const day = prevMonthLastDay - i;
+        const date = new Date(year, month - 1, day);
+        html += renderGlobalCalendarDay(date, true);
+    }
+    
+    // Current month days
+    for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(year, month, day);
+        html += renderGlobalCalendarDay(date, false);
+    }
+    
+    // Next month days
+    const totalCells = startingDayOfWeek + daysInMonth;
+    const remainingCells = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+    for (let day = 1; day <= remainingCells; day++) {
+        const date = new Date(year, month + 1, day);
+        html += renderGlobalCalendarDay(date, true);
+    }
+    
+    html += '</div>';
+    calendar.innerHTML = html;
+}
+
+function renderGlobalCalendarDay(date, isOtherMonth) {
+    const dateStr = getLocalISODate(date);
+    const today = getLocalISODate(new Date());
+    
+    // Filter global shifts for this day
+    const dayShifts = globalShifts.filter(s => s.date === dateStr);
+    
+    let classes = 'calendar-day';
+    if (isOtherMonth) classes += ' other-month';
+    if (dateStr === today) classes += ' today';
+    
+    let html = `<div class="${classes}" onclick="showGlobalDayDetail('${dateStr}')">`;
+    html += `<div class="calendar-day-number">${date.getDate()}</div>`;
+    
+    if (dayShifts.length > 0) {
+        html += '<div class="calendar-shifts">';
+        const maxVisible = 3;
+        dayShifts.slice(0, maxVisible).forEach(shift => {
+            const hours = calculateHours(shift.start, shift.end);
+            html += `<div class="calendar-shift-item global" title="${shift.assignedTo}">
+                <strong>${shift.assignedTo}</strong>: ${shift.start}-${shift.end} (${hours.toFixed(1)}h)
+            </div>`;
+        });
+        if (dayShifts.length > maxVisible) {
+            html += `<div class="calendar-shift-more">+${dayShifts.length - maxVisible} altro/i</div>`;
+        }
+        html += '</div>';
+    }
+    
+    html += '</div>';
+    return html;
+}
+
+let selectedGlobalDay = null;
+
+function showGlobalDayDetail(dateStr) {
+    selectedGlobalDay = dateStr;
+    const date = new Date(dateStr + 'T00:00:00');
+    const formattedDate = date.toLocaleDateString('it-IT', { 
+        weekday: 'long', 
+        day: 'numeric', 
+        month: 'long', 
+        year: 'numeric' 
+    });
+    
+    document.getElementById('globalDayDetailTitle').textContent = 
+        formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
+    
+    const dayShifts = globalShifts.filter(s => s.date === dateStr);
+    const container = document.getElementById('globalDayDetailShifts');
+    
+    if (dayShifts.length === 0) {
+        container.innerHTML = '<p class="empty-state">Nessun turno programmato per questo giorno</p>';
+    } else {
+        container.innerHTML = '';
+        dayShifts.forEach((shift, index) => {
+            const originalIndex = globalShifts.indexOf(shift);
+            const hours = calculateHours(shift.start, shift.end);
+            
+            const div = document.createElement('div');
+            div.className = 'day-shift-item global';
+            div.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: start;">
+                    <div>
+                        <div style="font-weight: 600; margin-bottom: 4px;">
+                            <span class="shift-badge user-badge">${shift.assignedTo}</span>
+                            ${shift.start} - ${shift.end}
+                        </div>
+                        <div style="font-size: 14px; color: var(--text-light);">
+                            ${hours.toFixed(1)} ore
+                        </div>
+                        ${shift.notes ? `<div style="font-size: 13px; margin-top: 4px;">${shift.notes}</div>` : ''}
+                    </div>
+                    <div class="shift-actions">
+                        <button class="icon-btn" onclick="editGlobalShift(${originalIndex})" title="Modifica">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                            </svg>
+                        </button>
+                        <button class="icon-btn" onclick="deleteGlobalShift(${originalIndex})" title="Elimina">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M3 6h18"/>
+                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+    }
+    
+    document.getElementById('globalDayDetailModal').classList.add('active');
+}
+
+function closeGlobalDayDetail() {
+    document.getElementById('globalDayDetailModal').classList.remove('active');
+    selectedGlobalDay = null;
+}
+
+function addGlobalShiftForDay() {
+    if (selectedGlobalDay) {
+        document.getElementById('globalShiftDate').value = selectedGlobalDay;
+    }
+    closeGlobalDayDetail();
+    showGlobalShiftForm();
+}
+
+function showGlobalShiftForm(editIndex = null) {
+    const form = document.getElementById('globalShiftForm');
+    if (!form) return;
+    
+    form.style.display = 'block';
+    
+    // Populate users dropdown
+    const assignSelect = document.getElementById('globalShiftAssignedTo');
+    if (assignSelect) {
+        assignSelect.innerHTML = '';
+        usersList.forEach(user => {
+            const option = document.createElement('option');
+            option.value = user.username;
+            option.textContent = user.username;
+            assignSelect.appendChild(option);
+        });
+        
+        // Pre-select current user if not admin
+        if (currentUserRole !== 'admin') {
+            assignSelect.value = currentUser;
+        }
+    }
+    
+    if (editIndex !== null) {
+        document.getElementById('globalFormTitle').textContent = 'Modifica Turno Globale';
+        document.getElementById('editGlobalShiftIndex').value = editIndex;
+        const shift = globalShifts[editIndex];
+        document.getElementById('globalShiftDate').value = shift.date;
+        document.getElementById('globalShiftStart').value = shift.start;
+        document.getElementById('globalShiftEnd').value = shift.end;
+        document.getElementById('globalShiftNotes').value = shift.notes || '';
+        if (assignSelect) assignSelect.value = shift.assignedTo;
+    } else {
+        document.getElementById('globalFormTitle').textContent = 'Nuovo Turno Globale';
+        document.getElementById('editGlobalShiftIndex').value = '';
+        document.getElementById('globalShiftFormElement').reset();
+        
+        if (selectedGlobalDay) {
+            document.getElementById('globalShiftDate').value = selectedGlobalDay;
+        } else {
+            document.getElementById('globalShiftDate').value = getLocalISODate(new Date());
+        }
+        
+        // Pre-select current user if not admin
+        if (currentUserRole !== 'admin' && assignSelect) {
+            assignSelect.value = currentUser;
+        }
+    }
+    
+    form.scrollIntoView({ behavior: 'smooth' });
+}
+
+function hideGlobalShiftForm() {
+    const form = document.getElementById('globalShiftForm');
+    if (form) {
+        form.style.display = 'none';
+        document.getElementById('globalShiftFormElement').reset();
+    }
+}
+
+async function handleSaveGlobalShift(e) {
+    e.preventDefault();
+    
+    const editIndex = document.getElementById('editGlobalShiftIndex').value;
+    const shift = {
+        date: document.getElementById('globalShiftDate').value,
+        start: document.getElementById('globalShiftStart').value,
+        end: document.getElementById('globalShiftEnd').value,
+        notes: document.getElementById('globalShiftNotes').value,
+        assignedTo: document.getElementById('globalShiftAssignedTo').value,
+        status: 'pending'
+    };
+    
+    const action = editIndex !== '' ? 'edit' : 'add';
+    const shiftIndex = editIndex !== '' ? parseInt(editIndex) : null;
+    
+    try {
+        const response = await fetch(API_BASE + 'save_global_shifts.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                username: currentUser,
+                action: action,
+                shift: shift,
+                shiftIndex: shiftIndex
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // Reload global shifts
+            const globalResponse = await fetch(API_BASE + 'get_global_shifts.php', {method: 'GET'});
+            globalShifts = await globalResponse.json();
+            
+            hideGlobalShiftForm();
+            renderGlobalCalendar();
+            
+            // Update personal shifts if the shift belongs to current user
+            if (shift.assignedTo === currentUser && currentUserRole !== 'admin') {
+                await updatePersonalShiftsFromGlobal();
+                updateDashboard();
+            }
+            
+            alert('Turno salvato con successo!');
+        } else {
+            alert('Errore durante il salvataggio');
+        }
+    } catch (error) {
+        console.error('Save global shift error:', error);
+        alert('Errore durante il salvataggio');
+    }
+}
+
+async function editGlobalShift(index) {
+    closeGlobalDayDetail();
+    showGlobalShiftForm(index);
+}
+
+async function deleteGlobalShift(index) {
+    if (!confirm('Sei sicuro di voler eliminare questo turno?')) return;
+    
+    const shift = globalShifts[index];
+    
+    try {
+        const response = await fetch(API_BASE + 'save_global_shifts.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                username: currentUser,
+                action: 'delete',
+                shift: shift,
+                shiftIndex: index
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // Reload global shifts
+            const globalResponse = await fetch(API_BASE + 'get_global_shifts.php', {method: 'GET'});
+            globalShifts = await globalResponse.json();
+            
+            if (selectedGlobalDay) {
+                showGlobalDayDetail(selectedGlobalDay);
+            }
+            
+            renderGlobalCalendar();
+            
+            // Update personal shifts if needed
+            if (shift.assignedTo === currentUser && currentUserRole !== 'admin') {
+                await updatePersonalShiftsFromGlobal();
+                updateDashboard();
+            }
+            
+            alert('Turno eliminato con successo!');
+        }
+    } catch (error) {
+        console.error('Delete global shift error:', error);
+        alert('Errore durante l\'eliminazione');
+    }
+}
+
+// NEW: Update personal shifts from global calendar
+async function updatePersonalShiftsFromGlobal() {
+    if (currentUserRole === 'admin') return;
+    
+    // Get all shifts assigned to current user from global calendar
+    const myGlobalShifts = globalShifts.filter(s => s.assignedTo === currentUser);
+    
+    // Convert to CSV format
+    let csv = 'Data,Entrata,Uscita,Note,Stato\n';
+    myGlobalShifts.forEach(shift => {
+        csv += `${shift.date},${shift.start},${shift.end},${shift.notes || ''},${shift.status}\n`;
+    });
+    
+    // Save to personal shifts
+    try {
+        await fetch(API_BASE + 'save_shifts.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: currentUser, shifts: csv })
+        });
+        
+        // Reload personal shifts
+        const shiftsResponse = await fetch(API_BASE + `get_shifts.php?username=${currentUser}`, {method: 'GET'});
+        const shiftsData = await shiftsResponse.text();
+        shifts = parseCSV(shiftsData);
+    } catch (error) {
+        console.error('Update personal shifts error:', error);
+    }
 }
 
 function shiftsToCSV(shiftsArray) {

@@ -13,11 +13,17 @@ if (!isset($data['username']) || !isset($data['password'])) {
 
 $username = $data['username'];
 $password = $data['password'];
+$role = isset($data['role']) ? $data['role'] : 'user'; // default: user
 
 // Validate username
 if (!preg_match('/^[a-zA-Z0-9_]{3,20}$/', $username)) {
     echo json_encode(['success' => false, 'message' => 'Username non valido (3-20 caratteri, solo lettere, numeri e underscore)']);
     exit;
+}
+
+// Validate role
+if (!in_array($role, ['user', 'admin'])) {
+    $role = 'user';
 }
 
 $profilesDir = dirname(__DIR__) . '/profiles';
@@ -40,28 +46,31 @@ if (isset($profiles[$username])) {
     exit;
 }
 
-// Create user directory
-$userDir = $profilesDir . '/' . $username;
-if (!is_dir($userDir)) {
-    mkdir($userDir, 0755, true);
+// Create user directory (only for non-admin users)
+if ($role === 'user') {
+    $userDir = $profilesDir . '/' . $username;
+    if (!is_dir($userDir)) {
+        mkdir($userDir, 0755, true);
+    }
+
+    // Create default settings
+    $defaultSettings = [
+        'contractStartDate' => '2024-10-21',
+        'weeklyHours' => 18,
+        'extraRate' => 10
+    ];
+
+    file_put_contents($userDir . '/settings.json', json_encode($defaultSettings, JSON_PRETTY_PRINT));
+
+    // Create empty shifts CSV
+    $shiftsCSV = "Data,Entrata,Uscita,Note,Stato\n";
+    file_put_contents($userDir . '/shifts.csv', $shiftsCSV);
 }
-
-// Create default settings
-$defaultSettings = [
-    'contractStartDate' => '2024-10-21',
-    'weeklyHours' => 18,
-    'extraRate' => 10
-];
-
-file_put_contents($userDir . '/settings.json', json_encode($defaultSettings, JSON_PRETTY_PRINT));
-
-// Create empty shifts CSV
-$shiftsCSV = "Data,Entrata,Uscita,Note,Stato\n";
-file_put_contents($userDir . '/shifts.csv', $shiftsCSV);
 
 // Add user to profiles
 $profiles[$username] = [
     'password' => password_hash($password, PASSWORD_DEFAULT),
+    'role' => $role,
     'created' => date('Y-m-d H:i:s')
 ];
 

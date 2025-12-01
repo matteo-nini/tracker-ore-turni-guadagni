@@ -110,6 +110,35 @@
                     </svg>
                     <span>Riepilogo</span>
                 </button>
+                <!-- NEW: Global Calendar -->
+                <button class="nav-item" data-view="globalCalendar">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
+                        <line x1="16" x2="16" y1="2" y2="6" />
+                        <line x1="8" x2="8" y1="2" y2="6" />
+                        <line x1="3" x2="21" y1="10" y2="10" />
+                        <path d="M8 14h.01" />
+                        <path d="M12 14h.01" />
+                        <path d="M16 14h.01" />
+                        <path d="M8 18h.01" />
+                        <path d="M12 18h.01" />
+                        <path d="M16 18h.01" />
+                    </svg>
+                    <span>Calendario Globale</span>
+                </button>
+                <!-- NEW: Logs (Admin only) -->
+                <button class="nav-item" data-view="logs" style="display: none;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="16" x2="8" y1="13" y2="13" />
+                        <line x1="16" x2="8" y1="17" y2="17" />
+                        <polyline points="10 9 9 9 8 9" />
+                    </svg>
+                    <span>Logs</span>
+                </button>
                 <button class="nav-item" data-view="settings">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -396,6 +425,98 @@
                 </div>
             </div>
 
+            <!-- NEW: Global Calendar View -->
+            <div id="globalCalendarView" class="view">
+                <h2>📅 Calendario Globale Turni</h2>
+                <p class="view-description">Visualizza e gestisci i turni di tutti i membri del team</p>
+
+                <div class="view-header">
+                    <div class="calendar-controls">
+                        <button id="prevMonthBtnGlobal" class="icon-btn">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <polyline points="15 18 9 12 15 6"></polyline>
+                            </svg>
+                        </button>
+                        <span id="currentMonthYearGlobal" class="month-year-label">Dicembre 2025</span>
+                        <button id="nextMonthBtnGlobal" class="icon-btn">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <polyline points="9 18 15 12 9 6"></polyline>
+                            </svg>
+                        </button>
+                        <button id="todayBtnGlobal" class="btn btn-secondary" style="margin-left: 16px;">Oggi</button>
+                    </div>
+                    <button id="addGlobalShiftBtn" class="btn btn-primary">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M5 12h14" />
+                            <path d="M12 5v14" />
+                        </svg>
+                        Aggiungi Turno
+                    </button>
+                </div>
+
+                <div id="globalShiftForm" class="form-card" style="display: none;">
+                    <h3 id="globalFormTitle">Nuovo Turno Globale</h3>
+                    <form id="globalShiftFormElement">
+                        <input type="hidden" id="editGlobalShiftIndex">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Assegnato a</label>
+                                <select id="globalShiftAssignedTo" required>
+                                    <!-- Populated dynamically -->
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Data</label>
+                                <input type="date" id="globalShiftDate" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Entrata</label>
+                                <input type="time" id="globalShiftStart" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Uscita</label>
+                                <input type="time" id="globalShiftEnd" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Note</label>
+                            <input type="text" id="globalShiftNotes" placeholder="Note opzionali">
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">Salva</button>
+                            <button type="button" id="cancelGlobalShiftBtn" class="btn btn-secondary">Annulla</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div id="globalCalendar" class="calendar-grid">
+                    <!-- Calendar will be generated here -->
+                </div>
+            </div>
+
+            <!-- NEW: Logs View (Admin only) -->
+            <div id="logsView" class="view">
+                <h2>📋 Log delle Modifiche</h2>
+                <p class="view-description">Storico di tutte le modifiche al calendario globale</p>
+
+                <div class="logs-container">
+                    <div class="logs-header">
+                        <h3>Registro Attività</h3>
+                        <span class="logs-count" id="logsCount">0 eventi</span>
+                    </div>
+                    <div id="logsContainer" class="logs-list">
+                        <p class="empty-state">Caricamento log...</p>
+                    </div>
+                </div>
+            </div>
+
             <!-- Settings View -->
             <div id="settingsView" class="view">
                 <h2>Impostazioni Profilo</h2>
@@ -498,6 +619,30 @@
             <div class="form-actions">
                 <button class="btn btn-primary" onclick="addShiftForDay()">Aggiungi Turno per questo Giorno</button>
                 <button class="btn btn-secondary" onclick="closeDayDetail()">Chiudi</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- NEW: Global Day Detail Modal -->
+    <div id="globalDayDetailModal" class="day-detail-modal">
+        <div class="day-detail-content">
+            <div class="day-detail-header">
+                <h3 id="globalDayDetailTitle">Turni del Giorno</h3>
+                <button class="icon-btn" onclick="closeGlobalDayDetail()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div id="globalDayDetailShifts" class="day-detail-shifts">
+                <!-- Shifts will be shown here -->
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-primary" onclick="addGlobalShiftForDay()">Aggiungi Turno per questo
+                    Giorno</button>
+                <button class="btn btn-secondary" onclick="closeGlobalDayDetail()">Chiudi</button>
             </div>
         </div>
     </div>
