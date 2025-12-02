@@ -819,18 +819,30 @@ function handleLogout() {
     }
 }
 
+// SOSTITUISCI la funzione loadUserData() nel tuo script.js:
+
 async function loadUserData() {
     try {
-        // Load users list (per assegnazione turni)
+        console.log('loadUserData called, role:', currentUserRole); // DEBUG
+        
+        // Load users list (per assegnazione turni) - SEMPRE
         const usersResponse = await fetch(API_BASE + 'get_users_list.php', {method: 'GET'});
         usersList = await usersResponse.json();
+        console.log('Users list loaded:', usersList.length, 'users'); // DEBUG
         
-        // Load global shifts
+        // Load global shifts - SEMPRE (anche per admin)
         const globalResponse = await fetch(API_BASE + 'get_global_shifts.php', {method: 'GET'});
         globalShifts = await globalResponse.json();
+        console.log('Global shifts loaded:', globalShifts.length, 'shifts'); // DEBUG
         
         if (currentUserRole === 'admin') {
             // Admin non ha settings o shifts personali
+            console.log('Admin detected, skipping personal data'); // DEBUG
+            // ✨ FIX: Render calendar immediately for admin
+            setTimeout(() => {
+                console.log('Rendering global calendar for admin...'); // DEBUG
+                renderGlobalCalendar();
+            }, 100);
             return;
         }
         
@@ -845,9 +857,15 @@ async function loadUserData() {
         const shiftsResponse = await fetch(API_BASE + `get_shifts.php?username=${currentUser}`, {method: 'GET'});
         const shiftsData = await shiftsResponse.text();
         shifts = parseCSV(shiftsData);
+        console.log('Personal shifts loaded:', shifts.length, 'shifts'); // DEBUG
         
         // Sync personal shifts to global calendar
         await syncPersonalToGlobal();
+        
+        // Reload global shifts after sync
+        const globalResponseAfterSync = await fetch(API_BASE + 'get_global_shifts.php', {method: 'GET'});
+        globalShifts = await globalResponseAfterSync.json();
+        console.log('Global shifts reloaded after sync:', globalShifts.length, 'shifts'); // DEBUG
         
         updateDashboard();
     } catch (error) {
