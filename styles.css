@@ -168,60 +168,6 @@ body {
     background: #059669;
 }
 
-/* Navbar */
-.navbar {
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    padding: 16px 24px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    box-shadow: var(--shadow);
-}
-
-.nav-brand {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    font-size: 20px;
-    font-weight: 700;
-    color: var(--text);
-}
-
-.nav-brand svg {
-    color: var(--primary);
-}
-
-.nav-menu {
-    display: flex;
-    gap: 8px;
-}
-
-.nav-item {
-    padding: 10px 16px;
-    background: transparent;
-    border: none;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--text-light);
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.nav-item:hover {
-    background: var(--background);
-    color: var(--text);
-}
-
-.nav-item.active {
-    background: var(--primary);
-    color: white;
-}
-
 /* Main Content */
 .main-content {
     padding: 32px;
@@ -318,19 +264,6 @@ body {
 }
 
 /* Calendar Styles */
-.calendar-controls {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.month-year-label {
-    font-size: 18px;
-    font-weight: 600;
-    color: var(--text);
-    min-width: 150px;
-    text-align: center;
-}
 
 .shift-quick-actions {
     display: flex;
@@ -369,110 +302,7 @@ body {
     opacity: 0.9;
 }
 
-.calendar-grid {
-    background: var(--surface);
-    border-radius: 12px;
-    padding: 20px;
-    box-shadow: var(--shadow);
-}
 
-.calendar-header {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 8px;
-    margin-bottom: 12px;
-}
-
-.calendar-day-name {
-    text-align: center;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text-light);
-    padding: 12px 4px;
-    text-transform: uppercase;
-}
-
-.calendar-days {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 8px;
-}
-
-.calendar-day {
-    aspect-ratio: 1;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 8px;
-    cursor: pointer;
-    transition: all 0.2s;
-    position: relative;
-    background: var(--surface);
-    min-height: 80px;
-    display: flex;
-    flex-direction: column;
-}
-
-.calendar-day:hover {
-    border-color: var(--primary);
-    background: rgba(59, 130, 246, 0.05);
-}
-
-.calendar-day.other-month {
-    background: var(--background);
-    opacity: 0.5;
-}
-
-.calendar-day.today {
-    border: 2px solid var(--primary);
-    background: rgba(59, 130, 246, 0.05);
-}
-
-.calendar-day-number {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text);
-    margin-bottom: 4px;
-}
-
-.calendar-day.other-month .calendar-day-number {
-    color: var(--text-light);
-}
-
-.calendar-shifts {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    flex: 1;
-}
-
-.calendar-shift-item {
-    font-size: 11px;
-    padding: 2px 4px;
-    border-radius: 4px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    background: rgba(59, 130, 246, 0.1);
-    color: var(--primary);
-    border-left: 3px solid var(--primary);
-}
-
-.calendar-shift-item.extra {
-    background: rgba(245, 158, 11, 0.1);
-    color: var(--warning);
-    border-left-color: var(--warning);
-}
-
-.calendar-shift-more {
-    font-size: 10px;
-    color: var(--text-light);
-    padding: 2px 4px;
-    cursor: pointer;
-}
-
-.calendar-shift-more:hover {
-    color: var(--primary);
-}
 
 /* Dashboard Sections */
 .dashboard-section {
@@ -977,11 +807,6 @@ body {
         align-items: stretch;
     }
 
-    .calendar-controls {
-        justify-content: center;
-        flex-wrap: wrap;
-    }
-
     .shift-quick-actions {
         flex-direction: column;
     }
@@ -1017,19 +842,6 @@ body {
         min-width: 800px;
     }
 
-    .calendar-day {
-        min-height: 60px;
-        padding: 4px;
-    }
-
-    .calendar-day-number {
-        font-size: 12px;
-    }
-
-    .calendar-shift-item {
-        font-size: 10px;
-    }
-
     .chart-container {
         height: 200px;
     }
@@ -1058,13 +870,7 @@ body {
     margin-top: -16px;
 }
 
-.calendar-shift-item.global {
-    background: rgba(16, 185, 129, 0.1);
-    color: var(--success);
-    border-left-color: var(--success);
-    font-size: 10px;
-    padding: 3px 5px;
-}
+
 
 .day-shift-item.global {
     border-left-color: var(--success);
@@ -1203,21 +1009,6 @@ body {
     padding-right: 40px;
 }
 
-/* ============================================
-   CALENDAR IMPROVEMENTS FOR MULTI-USER
-   ============================================ */
-
-.calendar-shift-item strong {
-    font-weight: 700;
-}
-
-.calendar-day:has(.calendar-shift-item.global) {
-    background: rgba(16, 185, 129, 0.02);
-}
-
-.calendar-shift-item {
-    cursor: help;
-}
 
 /* ============================================
    ENHANCED MODAL STYLES

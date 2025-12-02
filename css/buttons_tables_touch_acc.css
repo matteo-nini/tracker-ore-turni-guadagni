@@ -1,0 +1,288 @@
+/* ✨ AGGIORNA Bottoni nel tuo styles.css per mobile: */
+
+/* ============================================
+   BUTTONS - MOBILE OPTIMIZED
+   ============================================ */
+
+.btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 44px;
+    /* Touch-friendly minimum */
+}
+
+.btn:active {
+    transform: scale(0.98);
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: var(--primary-dark);
+}
+
+.btn-primary:active {
+    background: #1e40af;
+}
+
+.btn-secondary {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+}
+
+.btn-secondary:hover {
+    background: var(--background);
+}
+
+.btn-danger {
+    background: var(--danger);
+    color: white;
+}
+
+.btn-danger:active {
+    background: #dc2626;
+}
+
+.btn-success {
+    background: var(--success);
+    color: white;
+}
+
+.btn-success:active {
+    background: #059669;
+}
+
+.icon-btn {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    min-height: 40px;
+    padding: 0;
+    border: none;
+    background: var(--background);
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.icon-btn:hover {
+    background: var(--border);
+}
+
+.icon-btn:active {
+    transform: scale(0.95);
+    background: var(--text-light);
+}
+
+.icon-btn svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* ============================================
+   MOBILE BUTTONS (< 768px)
+   ============================================ */
+
+@media (max-width: 768px) {
+    .btn {
+        padding: 14px 20px;
+        font-size: 16px;
+        min-height: 48px;
+        /* iOS recommended minimum */
+        border-radius: 10px;
+    }
+
+    .btn svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    .icon-btn {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+        min-height: 44px;
+        border-radius: 10px;
+    }
+
+    .icon-btn svg {
+        width: 22px;
+        height: 22px;
+    }
+
+    /* Remove hover effects on touch devices */
+    @media (hover: none) {
+        .btn:hover {
+            transform: none;
+            box-shadow: none;
+        }
+
+        .icon-btn:hover {
+            background: var(--background);
+        }
+    }
+}
+
+/* ============================================
+   TABLES - MOBILE OPTIMIZED
+   ============================================ */
+
+@media (max-width: 768px) {
+
+    .table-container,
+    .shifts-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .shifts-table {
+        min-width: 700px;
+        font-size: 14px;
+    }
+
+    .shifts-table th,
+    .shifts-table td {
+        padding: 12px 8px;
+        font-size: 13px;
+    }
+
+    .shifts-table th {
+        position: sticky;
+        top: 0;
+        background: var(--background);
+        z-index: 10;
+    }
+
+    /* Mobile table alternative - stacked cards */
+    .shifts-table-mobile {
+        display: none;
+    }
+
+    @media (max-width: 600px) {
+        .shifts-table {
+            display: none;
+        }
+
+        .shifts-table-mobile {
+            display: block;
+        }
+
+        .shift-card-mobile {
+            background: var(--surface);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: var(--shadow);
+            border-left: 4px solid var(--primary);
+        }
+
+        .shift-card-mobile.extra {
+            border-left-color: var(--warning);
+        }
+
+        .shift-card-mobile-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 12px;
+        }
+
+        .shift-card-mobile-date {
+            font-weight: 600;
+            font-size: 15px;
+        }
+
+        .shift-card-mobile-time {
+            color: var(--text-light);
+            font-size: 14px;
+            margin-top: 4px;
+        }
+
+        .shift-card-mobile-details {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .shift-card-mobile-detail {
+            font-size: 13px;
+        }
+
+        .shift-card-mobile-detail strong {
+            display: block;
+            color: var(--text-light);
+            font-size: 11px;
+            margin-bottom: 4px;
+        }
+    }
+}
+
+/* ============================================
+   ACCESSIBILITY - TOUCH & FOCUS
+   ============================================ */
+
+/* Better focus indicators for keyboard navigation */
+*:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+/* Remove tap highlight on mobile */
+* {
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Smooth scrolling */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Prevent text selection on UI elements */
+.btn,
+.icon-btn,
+.nav-item,
+.calendar-day {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+/* ============================================
+   SAFE AREA (iPhone X+)
+   ============================================ */
+
+@supports (padding: env(safe-area-inset-bottom)) {
+    .navbar {
+        padding-left: max(16px, env(safe-area-inset-left));
+        padding-right: max(16px, env(safe-area-inset-right));
+    }
+
+    .main-content {
+        padding-left: max(16px, env(safe-area-inset-left));
+        padding-right: max(16px, env(safe-area-inset-right));
+        padding-bottom: max(16px, env(safe-area-inset-bottom));
+    }
+
+    .nav-menu.active {
+        padding-bottom: max(20px, env(safe-area-inset-bottom));
+    }
+}
