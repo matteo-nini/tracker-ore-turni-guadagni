@@ -3,6 +3,10 @@
 
 <head>
     <meta charset="UTF-8">
+     <!-- Meta tags per prevenire cache -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestione Turni Lavoro</title>
     <link rel="stylesheet" href="styles.css">
@@ -163,7 +167,19 @@
         <main class="main-content">
             <!-- Dashboard View -->
             <div id="dashboardView" class="view active">
-                <h2>Dashboard</h2>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                    <h2 style="margin: 0;">Dashboard</h2>
+
+                    <!-- ✨ Toggle per mostrare/nascondere guadagni -->
+                    <button id="toggleEarningsBtn" class="btn-toggle-earnings">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                        <span id="toggleEarningsText">Mostra Guadagni</span>
+                    </button>
+                </div>
 
                 <!-- Main Stats -->
                 <div class="stats-grid">
@@ -199,7 +215,7 @@
                             <p class="stat-sub-value" id="monthComparison">--</p>
                         </div>
                     </div>
-                    <div class="stat-card">
+                    <div class="stat-card earnings-data">
                         <div class="stat-icon">
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
                                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
@@ -210,10 +226,10 @@
                         </div>
                         <div class="stat-info">
                             <p class="stat-label">Guadagno in Busta (mese)</p>
-                            <p class="stat-value" id="contractEarnings">€0</p>
+                            <p class="stat-value earnings-value" id="contractEarnings">€0</p>
                         </div>
                     </div>
-                    <div class="stat-card">
+                    <div class="stat-card earnings-data">
                         <div class="stat-icon">
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
                                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
@@ -226,7 +242,7 @@
                         </div>
                         <div class="stat-info">
                             <p class="stat-label">Guadagno Extra (mese)</p>
-                            <p class="stat-value" id="extraEarnings">€0</p>
+                            <p class="stat-value earnings-value" id="extraEarnings">€0</p>
                         </div>
                     </div>
                 </div>
@@ -247,25 +263,24 @@
                     </div>
                 </div>
 
-                <!-- Payment Status -->
-                <div class="payment-section">
+                <div class="payment-section earnings-data">
                     <h3>Stato Pagamenti (Cumulativo)</h3>
                     <div class="payment-grid">
                         <div class="payment-card">
                             <p class="payment-label">Pagato in Busta</p>
-                            <p class="payment-value paid" id="paidContract">€0</p>
+                            <p class="payment-value paid earnings-value" id="paidContract">€0</p>
                         </div>
                         <div class="payment-card">
                             <p class="payment-label">Da Ricevere in Busta</p>
-                            <p class="payment-value pending" id="pendingContract">€0</p>
+                            <p class="payment-value pending earnings-value" id="pendingContract">€0</p>
                         </div>
                         <div class="payment-card">
                             <p class="payment-label">Extra Pagati</p>
-                            <p class="payment-value paid" id="paidExtra">€0</p>
+                            <p class="payment-value paid earnings-value" id="paidExtra">€0</p>
                         </div>
                         <div class="payment-card">
                             <p class="payment-label">Extra da Ricevere</p>
-                            <p class="payment-value pending" id="pendingExtra">€0</p>
+                            <p class="payment-value pending earnings-value" id="pendingExtra">€0</p>
                         </div>
                     </div>
                 </div>

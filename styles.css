@@ -1404,3 +1404,102 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 input[type="date"]::-webkit-calendar-picker-indicator:hover {
     opacity: 1;
 }
+
+/* Toggle Earnings Button */
+.btn-toggle-earnings {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-toggle-earnings:hover {
+    background: var(--background);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.btn-toggle-earnings svg {
+    transition: all 0.2s;
+}
+
+.btn-toggle-earnings.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+}
+
+.btn-toggle-earnings.active svg {
+    transform: scale(1.1);
+}
+
+/* Hidden state for earnings */
+.earnings-hidden .earnings-data {
+    filter: blur(8px);
+    pointer-events: none;
+    user-select: none;
+}
+
+.earnings-hidden .earnings-value {
+    color: transparent !important;
+    text-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+.earnings-hidden .earnings-value::before {
+    content: '€ •••';
+    position: absolute;
+    color: var(--text-light);
+    font-weight: 600;
+}
+
+/* Alternative style - overlay lock */
+.earnings-data {
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.earnings-hidden .earnings-data::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.05) 0%, rgba(0, 0, 0, 0.1) 100%);
+    backdrop-filter: blur(8px);
+    border-radius: 12px;
+    pointer-events: none;
+}
+
+/* Icon change when hidden/shown */
+.btn-toggle-earnings .eye-slash {
+    display: none;
+}
+
+.btn-toggle-earnings.active .eye-open {
+    display: none;
+}
+
+.btn-toggle-earnings.active .eye-slash {
+    display: block;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .btn-toggle-earnings {
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+
+    .btn-toggle-earnings span {
+        display: none;
+    }
+}

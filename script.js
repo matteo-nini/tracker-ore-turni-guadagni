@@ -53,8 +53,13 @@ function initializeApp() {
         currentUserRole = savedRole;
         loadUserData();
         showScreen('mainApp');
-        updateUIForRole(); // NEW
-   } else {
+        updateUIForRole();
+        
+        // ✨ Inizializza toggle guadagni
+        setTimeout(() => {
+            initEarningsToggle();
+        }, 100);
+    } else {
         showScreen('loginScreen');
     }
     setupEventListeners();
@@ -704,10 +709,8 @@ async function loadLogs() {
     }
 }
 
-// Trova questa funzione nel tuo script.js e sostituiscila completamente:
-
 function switchView(viewName) {
-    console.log('Switching to view:', viewName); // DEBUG
+    console.log('Switching to view:', viewName);
     
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     document.querySelectorAll('.nav-item[data-view]').forEach(i => i.classList.remove('active'));
@@ -715,9 +718,6 @@ function switchView(viewName) {
     const viewElement = document.getElementById(viewName + 'View');
     if (viewElement) {
         viewElement.classList.add('active');
-        console.log('View element found and activated:', viewName); // DEBUG
-    } else {
-        console.error('View element not found:', viewName + 'View'); // DEBUG
     }
     
     const navElement = document.querySelector(`.nav-item[data-view="${viewName}"]`);
@@ -727,28 +727,25 @@ function switchView(viewName) {
     
     // Load view-specific data
     if (viewName === 'dashboard' && currentUserRole !== 'admin') {
-        console.log('Loading dashboard...'); // DEBUG
         updateDashboard();
+        // ✨ Re-applica stato visibilità guadagni
+        setTimeout(() => {
+            updateEarningsVisibility();
+        }, 50);
     }
     if (viewName === 'shifts' && currentUserRole !== 'admin') {
-        console.log('Loading shifts calendar...'); // DEBUG
         renderCalendar();
     }
     if (viewName === 'settings' && currentUserRole !== 'admin') {
-        console.log('Loading settings...'); // DEBUG
         loadSettings();
     }
     if (viewName === 'summary' && currentUserRole !== 'admin') {
-        console.log('Loading summary...'); // DEBUG
         updateSummaryView();
     }
     if (viewName === 'globalCalendar') {
-        console.log('Loading global calendar...'); // DEBUG
-        console.log('Global shifts data:', globalShifts); // DEBUG
         renderGlobalCalendar();
     }
     if (viewName === 'logs' && currentUserRole === 'admin') {
-        console.log('Loading logs...'); // DEBUG
         loadLogs();
     }
 }
@@ -1955,3 +1952,77 @@ async function handlePayslipSubmit(e) {
     }
     alert(message);
 }
+
+// Variabile globale per stato visibilità guadagni
+let earningsVisible = false;
+
+// Funzione per inizializzare il toggle
+function initEarningsToggle() {
+    const toggleBtn = document.getElementById('toggleEarningsBtn');
+    if (!toggleBtn) return;
+    
+    // Carica stato salvato da localStorage
+    const savedState = localStorage.getItem('earningsVisible');
+    earningsVisible = savedState === 'true';
+    
+    // Applica stato iniziale
+    updateEarningsVisibility();
+    
+    // Event listener
+    toggleBtn.addEventListener('click', toggleEarningsVisibility);
+    
+    console.log('Earnings toggle initialized, visible:', earningsVisible);
+}
+
+// Funzione per cambiare visibilità
+function toggleEarningsVisibility() {
+    earningsVisible = !earningsVisible;
+    updateEarningsVisibility();
+    
+    // Salva preferenza
+    localStorage.setItem('earningsVisible', earningsVisible);
+    
+    console.log('Earnings visibility toggled:', earningsVisible);
+}
+
+// Funzione per aggiornare UI
+function updateEarningsVisibility() {
+    const toggleBtn = document.getElementById('toggleEarningsBtn');
+    const toggleText = document.getElementById('toggleEarningsText');
+    const dashboardView = document.getElementById('dashboardView');
+    
+    if (!toggleBtn || !dashboardView) return;
+    
+    if (earningsVisible) {
+        // Mostra guadagni
+        dashboardView.classList.remove('earnings-hidden');
+        toggleBtn.classList.add('active');
+        if (toggleText) toggleText.textContent = 'Nascondi Guadagni';
+        toggleBtn.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" 
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                <line x1="1" y1="1" x2="23" y2="23"></line>
+            </svg>
+            <span id="toggleEarningsText">Nascondi Guadagni</span>
+        `;
+    } else {
+        // Nascondi guadagni
+        dashboardView.classList.add('earnings-hidden');
+        toggleBtn.classList.remove('active');
+        if (toggleText) toggleText.textContent = 'Mostra Guadagni';
+        toggleBtn.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" 
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+            <span id="toggleEarningsText">Mostra Guadagni</span>
+        `;
+    }
+}
+
+// ✨ MODIFICA la funzione initializeApp() per includere il toggle:
+
+
+// ✨ MODIFICA anche switchView() per re-inizializzare il toggle quando torni alla dashboard:
