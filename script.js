@@ -78,7 +78,7 @@ function setupEventListeners() {
     // Calendar controls
     document.getElementById('startShiftBtn').addEventListener('click', startShift);
     document.getElementById('endShiftBtn').addEventListener('click', endShift);
-    document.getElementById('addShiftBtn').addEventListener('click', () => showShiftForm());
+    document.getElementById('addShiftBtn').addEventListener('click', () => { selectedDayForShift = null; showShiftForm(); });
     document.getElementById('prevMonthBtn').addEventListener('click', () => changeCalendarMonth(-1));
     document.getElementById('nextMonthBtn').addEventListener('click', () => changeCalendarMonth(1));
     document.getElementById('todayBtn').addEventListener('click', goToToday);
@@ -105,7 +105,7 @@ function setupEventListeners() {
     if (prevMonthBtnGlobal) prevMonthBtnGlobal.addEventListener('click', () => changeGlobalCalendarMonth(-1));
     if (nextMonthBtnGlobal) nextMonthBtnGlobal.addEventListener('click', () => changeGlobalCalendarMonth(1));
     if (todayBtnGlobal) todayBtnGlobal.addEventListener('click', goToTodayGlobal);
-    if (addGlobalShiftBtn) addGlobalShiftBtn.addEventListener('click', () => showGlobalShiftForm());
+    if (addGlobalShiftBtn) addGlobalShiftBtn.addEventListener('click', () => { selectedGlobalDay = null; showGlobalShiftForm(); });
 
     // Global shift form (NEW)
     const globalShiftForm = document.getElementById('globalShiftFormElement');
@@ -391,13 +391,20 @@ function closeDayDetail() {
 }
 
 function addShiftForDay() {
-    console.log('Adding shift for day:', selectedDayForShift); // DEBUG
-    if (selectedDayForShift) {
-        document.getElementById('shiftDate').value = selectedDayForShift;
-    }
+    console.log('addShiftForDay called, selectedDayForShift:', selectedDayForShift); // DEBUG
+    
+    // ✨ Non chiudere la modale subito, prima assicurati che la data sia salvata
+    const dateToSet = selectedDayForShift;
+    
     closeDayDetail();
     switchView('shifts');
-    showShiftForm();
+    
+    // ✨ Aspetta che la view sia cambiata, poi mostra il form
+    setTimeout(() => {
+        // Ri-imposta selectedDayForShift nel caso fosse stata resettata
+        selectedDayForShift = dateToSet;
+        showShiftForm();
+    }, 100);
 }
 
 function editShiftFromDay(index) {
@@ -1107,17 +1114,32 @@ function closeGlobalDayDetail() {
 }
 
 function addGlobalShiftForDay() {
-    console.log('Adding global shift for day:', selectedGlobalDay); // DEBUG
-    if (selectedGlobalDay) {
-        document.getElementById('globalShiftDate').value = selectedGlobalDay;
-    }
+    console.log('addGlobalShiftForDay called, selectedGlobalDay:', selectedGlobalDay); // DEBUG
+    
+    // ✨ Non chiudere la modale subito, prima salva la data
+    const dateToSet = selectedGlobalDay;
+    
     closeGlobalDayDetail();
-    showGlobalShiftForm();
+    
+    // ✨ Aspetta un attimo prima di mostrare il form
+    setTimeout(() => {
+        // Ri-imposta selectedGlobalDay nel caso fosse stata resettata
+        selectedGlobalDay = dateToSet;
+        showGlobalShiftForm();
+    }, 100);
 }
 
 function showGlobalShiftForm(editIndex = null) {
     const form = document.getElementById('globalShiftForm');
-    if (!form) return;
+    const dateInput = document.getElementById('globalShiftDate');
+    
+    if (!form) {
+        console.error('globalShiftForm not found!'); // DEBUG
+        return;
+    }
+    
+    console.log('showGlobalShiftForm called, editIndex:', editIndex); // DEBUG
+    console.log('selectedGlobalDay:', selectedGlobalDay); // DEBUG
     
     form.style.display = 'block';
     
@@ -1139,31 +1161,56 @@ function showGlobalShiftForm(editIndex = null) {
     }
     
     if (editIndex !== null) {
+        // Modalità modifica
         document.getElementById('globalFormTitle').textContent = 'Modifica Turno Globale';
         document.getElementById('editGlobalShiftIndex').value = editIndex;
         const shift = globalShifts[editIndex];
-        document.getElementById('globalShiftDate').value = shift.date;
+        
+        // ✨ Imposta i valori uno per uno
+        dateInput.value = shift.date;
         document.getElementById('globalShiftStart').value = shift.start;
         document.getElementById('globalShiftEnd').value = shift.end;
         document.getElementById('globalShiftNotes').value = shift.notes || '';
         if (assignSelect) assignSelect.value = shift.assignedTo;
+        
+        console.log('Edit mode - Date set to:', shift.date); // DEBUG
     } else {
+        // Modalità nuovo turno
         document.getElementById('globalFormTitle').textContent = 'Nuovo Turno Globale';
         document.getElementById('editGlobalShiftIndex').value = '';
+        
+        // ✨ Prima resetta il form
         document.getElementById('globalShiftFormElement').reset();
         
-        // ✨ FIX: Usa selectedGlobalDay se disponibile
-        if (selectedGlobalDay) {
-            console.log('Pre-filling global date with:', selectedGlobalDay); // DEBUG
-            document.getElementById('globalShiftDate').value = selectedGlobalDay;
-        } else {
-            document.getElementById('globalShiftDate').value = getLocalISODate(new Date());
+        // ✨ Re-popola il select dopo il reset
+        if (assignSelect) {
+            assignSelect.innerHTML = '';
+            usersList.forEach(user => {
+                const option = document.createElement('option');
+                option.value = user.username;
+                option.textContent = user.username;
+                assignSelect.appendChild(option);
+            });
+            
+            // Pre-select current user if not admin
+            if (currentUserRole !== 'admin') {
+                assignSelect.value = currentUser;
+            }
         }
         
-        // Pre-select current user if not admin
-        if (currentUserRole !== 'admin' && assignSelect) {
-            assignSelect.value = currentUser;
-        }
+        // ✨ Poi imposta la data con un piccolo delay
+        setTimeout(() => {
+            if (selectedGlobalDay) {
+                console.log('Setting global date to selectedGlobalDay:', selectedGlobalDay); // DEBUG
+                dateInput.value = selectedGlobalDay;
+                console.log('Global date input value after set:', dateInput.value); // DEBUG
+            } else {
+                const today = getLocalISODate(new Date());
+                console.log('Setting global date to today:', today); // DEBUG
+                dateInput.value = today;
+                console.log('Global date input value after set:', dateInput.value); // DEBUG
+            }
+        }, 50);
     }
     
     form.scrollIntoView({ behavior: 'smooth' });
@@ -1463,31 +1510,51 @@ async function saveSettings() {
 }
 
 function showShiftForm(editIndex = null) {
-    document.getElementById('shiftForm').style.display = 'block';
+    const formElement = document.getElementById('shiftForm');
+    const dateInput = document.getElementById('shiftDate');
+    
+    console.log('showShiftForm called, editIndex:', editIndex); // DEBUG
+    console.log('selectedDayForShift:', selectedDayForShift); // DEBUG
+    
+    formElement.style.display = 'block';
     
     if (editIndex !== null) {
+        // Modalità modifica
         document.getElementById('formTitle').textContent = 'Modifica Turno';
         document.getElementById('editShiftIndex').value = editIndex;
         const shift = shifts[editIndex];
-        document.getElementById('shiftDate').value = shift.date;
+        
+        // ✨ Imposta i valori uno per uno
+        dateInput.value = shift.date;
         document.getElementById('shiftStart').value = shift.start;
         document.getElementById('shiftEnd').value = shift.end;
         document.getElementById('shiftNotes').value = shift.notes;
+        
+        console.log('Edit mode - Date set to:', shift.date); // DEBUG
     } else {
+        // Modalità nuovo turno
         document.getElementById('formTitle').textContent = 'Nuovo Turno';
         document.getElementById('editShiftIndex').value = '';
+        
+        // ✨ Prima resetta il form
         document.getElementById('shiftFormElement').reset();
         
-        // ✨ FIX: Usa selectedDayForShift se disponibile
-        if (selectedDayForShift) {
-            console.log('Pre-filling date with:', selectedDayForShift); // DEBUG
-            document.getElementById('shiftDate').value = selectedDayForShift;
-        } else {
-            document.getElementById('shiftDate').value = getLocalISODate(new Date());
-        }
+        // ✨ Poi imposta la data con un piccolo delay per assicurarsi che il reset sia completato
+        setTimeout(() => {
+            if (selectedDayForShift) {
+                console.log('Setting date to selectedDayForShift:', selectedDayForShift); // DEBUG
+                dateInput.value = selectedDayForShift;
+                console.log('Date input value after set:', dateInput.value); // DEBUG
+            } else {
+                const today = getLocalISODate(new Date());
+                console.log('Setting date to today:', today); // DEBUG
+                dateInput.value = today;
+                console.log('Date input value after set:', dateInput.value); // DEBUG
+            }
+        }, 50);
     }
     
-    document.getElementById('shiftForm').scrollIntoView({ behavior: 'smooth' });
+    formElement.scrollIntoView({ behavior: 'smooth' });
 }
 
 function hideShiftForm() {
