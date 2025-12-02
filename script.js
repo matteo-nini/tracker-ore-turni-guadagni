@@ -59,7 +59,7 @@ function initializeApp() {
         setTimeout(() => {
             initMobileMenu();
             initEarningsToggle();
-        }, 100);
+        }, 200);
     } else {
         showScreen('loginScreen');
     }
@@ -119,7 +119,7 @@ function setupEventListeners() {
     if (globalShiftForm) globalShiftForm.addEventListener('submit', handleSaveGlobalShift);
     if (cancelGlobalShiftBtn) cancelGlobalShiftBtn.addEventListener('click', hideGlobalShiftForm);
 
-    initMobileMenu();
+    // initMobileMenu();
 }
 
 // NEW: Update UI based on user role
@@ -2027,29 +2027,66 @@ function updateEarningsVisibility() {
 
 // Mobile Menu Toggle
 function initMobileMenu() {
+    console.log('🍔 Initializing mobile menu...');
+    
     const hamburger = document.getElementById('navHamburger');
     const navMenu = document.getElementById('navMenu');
     const navOverlay = document.getElementById('navOverlay');
     const navItems = document.querySelectorAll('.nav-item');
     
-    if (!hamburger || !navMenu || !navOverlay) return;
+    console.log('Hamburger:', hamburger);
+    console.log('Nav Menu:', navMenu);
+    console.log('Nav Overlay:', navOverlay);
+    console.log('Nav Items:', navItems.length);
+    
+    if (!hamburger) {
+        console.error('❌ Hamburger button not found!');
+        return;
+    }
+    
+    if (!navMenu) {
+        console.error('❌ Nav menu not found!');
+        return;
+    }
+    
+    if (!navOverlay) {
+        console.error('❌ Nav overlay not found!');
+        return;
+    }
     
     // Toggle menu
-    const toggleMenu = () => {
-        hamburger.classList.toggle('active');
-        navMenu.classList.toggle('active');
-        navOverlay.classList.toggle('active');
+    const toggleMenu = (e) => {
+        console.log('🍔 Toggle menu clicked!');
+        e.preventDefault();
+        e.stopPropagation();
         
-        // Prevent body scroll when menu is open
-        if (navMenu.classList.contains('active')) {
-            document.body.style.overflow = 'hidden';
-        } else {
+        const isActive = hamburger.classList.contains('active');
+        console.log('Current state - Active:', isActive);
+        
+        if (isActive) {
+            // Close menu
+            console.log('Closing menu...');
+            hamburger.classList.remove('active');
+            navMenu.classList.remove('active');
+            navOverlay.classList.remove('active');
             document.body.style.overflow = '';
+        } else {
+            // Open menu
+            console.log('Opening menu...');
+            hamburger.classList.add('active');
+            navMenu.classList.add('active');
+            navOverlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
         }
+        
+        console.log('After toggle - Hamburger classes:', hamburger.className);
+        console.log('After toggle - NavMenu classes:', navMenu.className);
+        console.log('After toggle - Overlay classes:', navOverlay.className);
     };
     
     // Close menu
     const closeMenu = () => {
+        console.log('🔒 Closing menu...');
         hamburger.classList.remove('active');
         navMenu.classList.remove('active');
         navOverlay.classList.remove('active');
@@ -2058,16 +2095,21 @@ function initMobileMenu() {
     
     // Event listeners
     hamburger.addEventListener('click', toggleMenu);
+    console.log('✅ Hamburger click listener attached');
+    
     navOverlay.addEventListener('click', closeMenu);
+    console.log('✅ Overlay click listener attached');
     
     // Close menu when nav item is clicked (mobile)
-    navItems.forEach(item => {
+    navItems.forEach((item, index) => {
         item.addEventListener('click', () => {
+            console.log(`Nav item ${index} clicked, width:`, window.innerWidth);
             if (window.innerWidth <= 768) {
                 closeMenu();
             }
         });
     });
+    console.log('✅ Nav items click listeners attached');
     
     // Close menu on resize if window becomes larger
     window.addEventListener('resize', () => {
@@ -2075,6 +2117,12 @@ function initMobileMenu() {
             closeMenu();
         }
     });
+    console.log('✅ Resize listener attached');
     
-    console.log('Mobile menu initialized');
+    // Test immediato
+    console.log('🧪 Testing hamburger clickability...');
+    hamburger.style.pointerEvents = 'auto';
+    hamburger.style.zIndex = '9999';
+    
+    console.log('✅ Mobile menu initialized successfully!');
 }
