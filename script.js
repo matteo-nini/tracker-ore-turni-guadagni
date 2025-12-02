@@ -321,8 +321,9 @@ function goToToday() {
 let selectedDayForShift = null;
 
 function showDayDetail(dateStr) {
-    selectedDayForShift = dateStr;
-    // CORREZIONE FUSO ORARIO: Aggiunge T00:00:00 per interpretare la data come locale
+    selectedDayForShift = dateStr; // ✨ Salva la data selezionata
+    console.log('Day detail opened for:', dateStr); // DEBUG
+    
     const date = new Date(dateStr + 'T00:00:00'); 
     const formattedDate = date.toLocaleDateString('it-IT', { 
         weekday: 'long', 
@@ -386,10 +387,11 @@ function showDayDetail(dateStr) {
 
 function closeDayDetail() {
     document.getElementById('dayDetailModal').classList.remove('active');
-    selectedDayForShift = null;
+    selectedDayForShift = null; // ✨ Reset quando chiudi
 }
 
 function addShiftForDay() {
+    console.log('Adding shift for day:', selectedDayForShift); // DEBUG
     if (selectedDayForShift) {
         document.getElementById('shiftDate').value = selectedDayForShift;
     }
@@ -1037,7 +1039,9 @@ function renderGlobalCalendarDay(date, isOtherMonth) {
 let selectedGlobalDay = null;
 
 function showGlobalDayDetail(dateStr) {
-    selectedGlobalDay = dateStr;
+    selectedGlobalDay = dateStr; // ✨ Salva la data selezionata
+    console.log('Global day detail opened for:', dateStr); // DEBUG
+    
     const date = new Date(dateStr + 'T00:00:00');
     const formattedDate = date.toLocaleDateString('it-IT', { 
         weekday: 'long', 
@@ -1099,10 +1103,11 @@ function showGlobalDayDetail(dateStr) {
 
 function closeGlobalDayDetail() {
     document.getElementById('globalDayDetailModal').classList.remove('active');
-    selectedGlobalDay = null;
+    selectedGlobalDay = null; // ✨ Reset quando chiudi
 }
 
 function addGlobalShiftForDay() {
+    console.log('Adding global shift for day:', selectedGlobalDay); // DEBUG
     if (selectedGlobalDay) {
         document.getElementById('globalShiftDate').value = selectedGlobalDay;
     }
@@ -1147,7 +1152,9 @@ function showGlobalShiftForm(editIndex = null) {
         document.getElementById('editGlobalShiftIndex').value = '';
         document.getElementById('globalShiftFormElement').reset();
         
+        // ✨ FIX: Usa selectedGlobalDay se disponibile
         if (selectedGlobalDay) {
+            console.log('Pre-filling global date with:', selectedGlobalDay); // DEBUG
             document.getElementById('globalShiftDate').value = selectedGlobalDay;
         } else {
             document.getElementById('globalShiftDate').value = getLocalISODate(new Date());
@@ -1471,8 +1478,9 @@ function showShiftForm(editIndex = null) {
         document.getElementById('editShiftIndex').value = '';
         document.getElementById('shiftFormElement').reset();
         
-        // If selectedDayForShift is set, pre-fill date
+        // ✨ FIX: Usa selectedDayForShift se disponibile
         if (selectedDayForShift) {
+            console.log('Pre-filling date with:', selectedDayForShift); // DEBUG
             document.getElementById('shiftDate').value = selectedDayForShift;
         } else {
             document.getElementById('shiftDate').value = getLocalISODate(new Date());
