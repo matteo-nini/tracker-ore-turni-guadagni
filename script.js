@@ -55,8 +55,9 @@ function initializeApp() {
         showScreen('mainApp');
         updateUIForRole();
         
-        // ✨ Inizializza toggle guadagni
+        // Initialize mobile menu after showing main app
         setTimeout(() => {
+            initMobileMenu();
             initEarningsToggle();
         }, 100);
     } else {
@@ -117,6 +118,8 @@ function setupEventListeners() {
     const cancelGlobalShiftBtn = document.getElementById('cancelGlobalShiftBtn');
     if (globalShiftForm) globalShiftForm.addEventListener('submit', handleSaveGlobalShift);
     if (cancelGlobalShiftBtn) cancelGlobalShiftBtn.addEventListener('click', hideGlobalShiftForm);
+
+    initMobileMenu();
 }
 
 // NEW: Update UI based on user role
@@ -2022,7 +2025,56 @@ function updateEarningsVisibility() {
     }
 }
 
-// ✨ MODIFICA la funzione initializeApp() per includere il toggle:
-
-
-// ✨ MODIFICA anche switchView() per re-inizializzare il toggle quando torni alla dashboard:
+// Mobile Menu Toggle
+function initMobileMenu() {
+    const hamburger = document.getElementById('navHamburger');
+    const navMenu = document.getElementById('navMenu');
+    const navOverlay = document.getElementById('navOverlay');
+    const navItems = document.querySelectorAll('.nav-item');
+    
+    if (!hamburger || !navMenu || !navOverlay) return;
+    
+    // Toggle menu
+    const toggleMenu = () => {
+        hamburger.classList.toggle('active');
+        navMenu.classList.toggle('active');
+        navOverlay.classList.toggle('active');
+        
+        // Prevent body scroll when menu is open
+        if (navMenu.classList.contains('active')) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+    };
+    
+    // Close menu
+    const closeMenu = () => {
+        hamburger.classList.remove('active');
+        navMenu.classList.remove('active');
+        navOverlay.classList.remove('active');
+        document.body.style.overflow = '';
+    };
+    
+    // Event listeners
+    hamburger.addEventListener('click', toggleMenu);
+    navOverlay.addEventListener('click', closeMenu);
+    
+    // Close menu when nav item is clicked (mobile)
+    navItems.forEach(item => {
+        item.addEventListener('click', () => {
+            if (window.innerWidth <= 768) {
+                closeMenu();
+            }
+        });
+    });
+    
+    // Close menu on resize if window becomes larger
+    window.addEventListener('resize', () => {
+        if (window.innerWidth > 768) {
+            closeMenu();
+        }
+    });
+    
+    console.log('Mobile menu initialized');
+}
