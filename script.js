@@ -517,27 +517,38 @@ function updateDashboard() {
 
 function updateUpcomingShifts() {
     const container = document.getElementById('upcomingShifts');
+    if (!container) return;
+    
     const today = new Date();
-    // Usa la funzione sicura per oggi
     const todayStr = getLocalISODate(today);
     
-    // CORREZIONE FUSO ORARIO: Assicura un corretto filtro e sorting per la data locale
-    const upcomingShifts = shifts
-        .filter(s => s.date >= todayStr)
-        .sort((a, b) => new Date(a.date + 'T00:00:00') - new Date(b.date + 'T00:00:00'))
-        .slice(0, 5);
+    console.log('Updating upcoming shifts for user:', currentUser); // DEBUG
+    console.log('Today:', todayStr); // DEBUG
+    console.log('Global shifts:', globalShifts.length); // DEBUG
     
-    if (upcomingShifts.length === 0) {
+    // ✨ FIX: Prendi i turni dal calendario GLOBALE filtrati per l'utente corrente
+    const myUpcomingShifts = globalShifts
+        .filter(s => {
+            const isMyShift = s.assignedTo === currentUser;
+            const isFuture = s.date >= todayStr;
+            console.log(`Shift ${s.date} - Mine: ${isMyShift}, Future: ${isFuture}`); // DEBUG
+            return isMyShift && isFuture;
+        })
+        .sort((a, b) => new Date(a.date + 'T00:00:00') - new Date(b.date + 'T00:00:00'))
+        .slice(0, 5); // Mostra i prossimi 5
+    
+    console.log('Filtered upcoming shifts:', myUpcomingShifts.length); // DEBUG
+    
+    if (myUpcomingShifts.length === 0) {
         container.innerHTML = '<p class="empty-state">Nessun turno programmato</p>';
         return;
     }
     
     container.innerHTML = '';
-    upcomingShifts.forEach(shift => {
+    myUpcomingShifts.forEach(shift => {
         const type = getShiftType(shift);
         const hours = calculateHours(shift.start, shift.end);
-        // CORREZIONE FUSO ORARIO: Assicura che la data sia interpretata localmente per la formattazione
-        const date = new Date(shift.date + 'T00:00:00'); 
+        const date = new Date(shift.date + 'T00:00:00');
         const formattedDate = date.toLocaleDateString('it-IT', { 
             weekday: 'short', 
             day: 'numeric', 
