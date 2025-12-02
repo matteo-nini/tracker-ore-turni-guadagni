@@ -1,6 +1,10 @@
 <?php
 header('Content-Type: text/csv');
 header('Access-Control-Allow-Origin: *');
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Cache-Control: post-check=0, pre-check=0', false);
+header('Pragma: no-cache');
+header('Expires: 0');
 
 // Verifica che il parametro username sia fornito
 if (!isset($_GET['username']) || empty(trim($_GET['username']))) {
