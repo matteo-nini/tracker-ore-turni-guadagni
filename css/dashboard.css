@@ -32,8 +32,13 @@
     box-shadow: var(--shadow);
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 16px;
     transition: all 0.2s;
+}
+
+.stat-card.column {
+    flex-direction: column;
 }
 
 .stat-card:hover {

@@ -1771,6 +1771,8 @@ function updateSummaryView() {
     if (document.getElementById('monthFilter') && document.getElementById('monthFilter').options.length === 1) {
         populateMonthFilter();
     }
+
+    document.getElementById('summaryTotalShifts').textContent = shiftsToAnalyze.length.toString();
 }
 
 function populateMonthFilter() {
