@@ -673,7 +673,7 @@ async function loadLogs() {
     if (currentUserRole !== 'admin') return;
     
     try {
-        const response = await fetch(API_BASE + `get_logs.php?username=${currentUser}`, {method: 'GET'});
+        const response = await fetch(API_BASE + `/logs/get.php?username=${currentUser}`, {method: 'GET'});
         const result = await response.json();
         
         if (result.error) {
@@ -765,7 +765,7 @@ async function handleLogin(e) {
     const password = document.getElementById('loginPassword').value;
     
     try {
-        const response = await fetch(API_BASE + 'login.php', {
+        const response = await fetch(API_BASE + '/users/login.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, password })
@@ -802,7 +802,7 @@ async function handleRegister(e) {
     }
     
     try {
-        const response = await fetch(API_BASE + 'register.php', {
+        const response = await fetch(API_BASE + '/users/register.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, password, role: 'user' }) // Default: user
@@ -846,12 +846,12 @@ async function loadUserData() {
         console.log('loadUserData called, role:', currentUserRole); // DEBUG
         
         // Load users list (per assegnazione turni) - SEMPRE
-        const usersResponse = await fetch(API_BASE + 'get_users_list.php', {method: 'GET'});
+        const usersResponse = await fetch(API_BASE + '/users/list.php', {method: 'GET'});
         usersList = await usersResponse.json();
         console.log('Users list loaded:', usersList.length, 'users'); // DEBUG
         
         // Load global shifts - SEMPRE (anche per admin)
-        const globalResponse = await fetch(API_BASE + 'get_global_shifts.php', {method: 'GET'});
+        const globalResponse = await fetch(API_BASE + '/shifts/global/get.php', {method: 'GET'});
         globalShifts = await globalResponse.json();
         console.log('Global shifts loaded:', globalShifts.length, 'shifts'); // DEBUG
         
@@ -867,14 +867,14 @@ async function loadUserData() {
         }
         
         // Load personal settings and shifts (solo per utenti normali)
-        const settingsResponse = await fetch(API_BASE + `get_settings.php?username=${currentUser}`, {method: 'GET'});
+        const settingsResponse = await fetch(API_BASE + `/users/settings/get.php?username=${currentUser}`, {method: 'GET'});
         userSettings = await settingsResponse.json();
         
         if (userSettings && userSettings.contractRate === undefined) {
             userSettings.contractRate = CONTRACT_RATE_DEFAULT;
         }
 
-        const shiftsResponse = await fetch(API_BASE + `get_shifts.php?username=${currentUser}`, {method: 'GET'});
+        const shiftsResponse = await fetch(API_BASE + `/shifts/user/get.php?username=${currentUser}`, {method: 'GET'});
         const shiftsData = await shiftsResponse.text();
         shifts = parseCSV(shiftsData);
         console.log('Personal shifts loaded:', shifts.length, 'shifts'); // DEBUG
@@ -883,7 +883,7 @@ async function loadUserData() {
         await syncPersonalToGlobal();
         
         // Reload global shifts after sync
-        const globalResponseAfterSync = await fetch(API_BASE + 'get_global_shifts.php', {method: 'GET'});
+        const globalResponseAfterSync = await fetch(API_BASE + '/shifts/global/get.php', {method: 'GET'});
         globalShifts = await globalResponseAfterSync.json();
         console.log('Global shifts reloaded after sync:', globalShifts.length, 'shifts'); // DEBUG
         
@@ -909,7 +909,7 @@ async function syncPersonalToGlobal() {
         if (result.success && result.added > 0) {
             console.log(`Sincronizzati ${result.added} turni nel calendario globale`);
             // Reload global shifts
-            const globalResponse = await fetch(API_BASE + 'get_global_shifts.php', {method: 'GET'});
+            const globalResponse = await fetch(API_BASE + '/shifts/global/get.php', {method: 'GET'});
             globalShifts = await globalResponse.json();
         }
     } catch (error) {
@@ -1241,7 +1241,7 @@ async function handleSaveGlobalShift(e) {
     const shiftIndex = editIndex !== '' ? parseInt(editIndex) : null;
     
     try {
-        const response = await fetch(API_BASE + 'save_global_shifts.php', {
+        const response = await fetch(API_BASE + '/shifts/global/save.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
@@ -1256,7 +1256,7 @@ async function handleSaveGlobalShift(e) {
         
         if (result.success) {
             // Reload global shifts
-            const globalResponse = await fetch(API_BASE + 'get_global_shifts.php', {method: 'GET'});
+            const globalResponse = await fetch(API_BASE + '/shifts/global/get.php', {method: 'GET'});
             globalShifts = await globalResponse.json();
             
             hideGlobalShiftForm();
@@ -1289,7 +1289,7 @@ async function deleteGlobalShift(index) {
     const shift = globalShifts[index];
     
     try {
-        const response = await fetch(API_BASE + 'save_global_shifts.php', {
+        const response = await fetch(API_BASE + '/shifts/global/save.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
@@ -1304,7 +1304,7 @@ async function deleteGlobalShift(index) {
         
         if (result.success) {
             // Reload global shifts
-            const globalResponse = await fetch(API_BASE + 'get_global_shifts.php', {method: 'GET'});
+            const globalResponse = await fetch(API_BASE + '/shifts/global/get.php', {method: 'GET'});
             globalShifts = await globalResponse.json();
             
             if (selectedGlobalDay) {
@@ -1342,14 +1342,14 @@ async function updatePersonalShiftsFromGlobal() {
     
     // Save to personal shifts
     try {
-        await fetch(API_BASE + 'save_shifts.php', {
+        await fetch(API_BASE + '/shifts/user/save.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username: currentUser, shifts: csv })
         });
         
         // Reload personal shifts
-        const shiftsResponse = await fetch(API_BASE + `get_shifts.php?username=${currentUser}`, {method: 'GET'});
+        const shiftsResponse = await fetch(API_BASE + `/shifts/user/get.php?username=${currentUser}`, {method: 'GET'});
         const shiftsData = await shiftsResponse.text();
         shifts = parseCSV(shiftsData);
     } catch (error) {
@@ -1496,7 +1496,7 @@ function calculateMonthlyStats(month, year) {
 
 async function saveSettings() {
     try {
-        const response = await fetch(API_BASE + 'save_settings.php', {
+        const response = await fetch(API_BASE + '/users/settings/save.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username: currentUser, settings: userSettings })
@@ -1617,7 +1617,7 @@ async function toggleShiftStatus(index) {
 
 async function saveShifts() {
     try {
-        const response = await fetch(API_BASE + 'save_shifts.php', {
+        const response = await fetch(API_BASE + '/shifts/user/save.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username: currentUser, shifts: shiftsToCSV(shifts) })
@@ -1845,7 +1845,7 @@ async function handleChangePassword(e) {
     }
     
     try {
-        const response = await fetch(API_BASE + 'change_password.php', {
+        const response = await fetch(API_BASE + '/users/change_password.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username: currentUser, currentPassword, newPassword })
@@ -1870,7 +1870,7 @@ async function handleDeleteProfile() {
     if (!confirm('ATTENZIONE: Tutti i tuoi dati verranno eliminati. Confermi?')) return;
     
     try {
-        const response = await fetch(API_BASE + 'delete_profile.php', {
+        const response = await fetch(API_BASE + '/users/deleteile.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username: currentUser })
