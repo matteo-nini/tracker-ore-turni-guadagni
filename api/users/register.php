@@ -36,19 +36,19 @@ if (!in_array($role, ['user', 'admin'])) {
 
 try {
     $pdo = getDB();
-    
+
     // Check if username exists
     $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ? LIMIT 1");
     $stmt->execute([$username]);
-    
+
     if ($stmt->fetch()) {
         echo json_encode(['success' => false, 'message' => 'Username già esistente']);
         exit;
     }
-    
+
     // Begin transaction
     $pdo->beginTransaction();
-    
+
     // Insert user
     $stmt = $pdo->prepare("INSERT INTO users (username, password, role) VALUES (?, ?, ?)");
     $stmt->execute([
@@ -56,15 +56,12 @@ try {
         password_hash($password, PASSWORD_DEFAULT),
         $role
     ]);
-    
+
     $userId = $pdo->lastInsertId();
-    
+
     // Create default settings for non-admin users
     if ($role === 'user') {
-        $stmt = $pdo->prepare("
-            INSERT INTO user_settings (user_id, contract_start_date, weekly_hours, extra_rate) 
-            VALUES (?, ?, ?, ?)
-        ");
+        $stmt = $pdo->prepare("INSERT INTO user_settings (user_id, contract_start_date, weekly_hours, extra_rate) VALUES (?, ?, ?, ?)");
         $stmt->execute([
             $userId,
             '2024-10-21',
@@ -72,9 +69,9 @@ try {
             10.00
         ]);
     }
-    
+
     $pdo->commit();
-    
+
     echo json_encode(['success' => true]);
 } catch (PDOException $e) {
     if ($pdo->inTransaction()) {

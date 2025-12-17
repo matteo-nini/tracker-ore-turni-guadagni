@@ -1,25 +1,17 @@
 <?php
+require_once dirname(__DIR__) . '/config/database.php';
+
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
-header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
-header('Cache-Control: post-check=0, pre-check=0', false);
-header('Pragma: no-cache');
-header('Expires: 0');
 
-$calendarDir = dirname(__DIR__) . '/calendar';
-$globalShiftsFile = $calendarDir . '/global_shifts.json';
+try {
+    $pdo = getDB();
 
-// Create calendar directory if it doesn't exist
-if (!is_dir($calendarDir)) {
-    mkdir($calendarDir, 0755, true);
+    $stmt = $pdo->prepare("SELECT id, assigned_to_user_id, date, start_time, end_time, notes, status FROM global_shifts ORDER BY date DESC");
+    $stmt->execute();
+    $shifts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    echo json_encode($shifts);
+} catch (PDOException $e) {
+    error_log("Global shifts fetch error: " . $e->getMessage());
+    echo json_encode(['success' => false, 'message' => 'Errore durante il recupero dei turni']);
 }
-
-// Create global shifts file if it doesn't exist
-if (!file_exists($globalShiftsFile)) {
-    file_put_contents($globalShiftsFile, json_encode([], JSON_PRETTY_PRINT));
-}
-
-$shifts = json_decode(file_get_contents($globalShiftsFile), true);
-
-echo json_encode($shifts);
-?>

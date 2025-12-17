@@ -16,35 +16,32 @@ if (!isset($_GET['username']) || empty(trim($_GET['username']))) {
     exit;
 }
 
-$username = preg_replace('/[^a-zA-Z0-9_]/', '', $_GET['username']);
+$username = trim($_GET['username']);
 
 try {
     $pdo = getDB();
-    
+
     // Get user ID
     $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ? LIMIT 1");
     $stmt->execute([$username]);
     $user = $stmt->fetch();
-    
+
     if (!$user) {
         echo "Errore: utente non trovato\n";
         echo "Data,Entrata,Uscita,Note,Stato\n";
         exit;
     }
-    
+
+    $userId = $user['id'];
+
     // Get user shifts
-    $stmt = $pdo->prepare("
-        SELECT date, start_time, end_time, notes, status 
-        FROM shifts 
-        WHERE user_id = ? 
-        ORDER BY date DESC
-    ");
-    $stmt->execute([$user['id']]);
-    $shifts = $stmt->fetchAll();
-    
+    $stmt = $pdo->prepare("SELECT date, start_time, end_time, notes, status FROM shifts WHERE user_id = ? ORDER BY date DESC");
+    $stmt->execute([$userId]);
+    $shifts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
     // Output CSV
     echo "Data,Entrata,Uscita,Note,Stato\n";
-    
+
     foreach ($shifts as $shift) {
         echo sprintf(
             "%s,%s,%s,%s,%s\n",
@@ -55,9 +52,8 @@ try {
             $shift['status']
         );
     }
-    
 } catch (PDOException $e) {
-    error_log("Get shifts error: " . $e->getMessage());
+    error_log("User shift fetch error: " . $e->getMessage());
     echo "Errore: impossibile recuperare i turni\n";
     echo "Data,Entrata,Uscita,Note,Stato\n";
 }

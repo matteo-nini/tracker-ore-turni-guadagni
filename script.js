@@ -898,7 +898,7 @@ async function syncPersonalToGlobal() {
     if (currentUserRole === 'admin') return;
     
     try {
-        const response = await fetch(API_BASE + 'sync_shifts.php', {
+        const response = await fetch(API_BASE + '/shifts/sync.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username: currentUser })

@@ -8,6 +8,8 @@ header('Cache-Control: post-check=0, pre-check=0', false);
 header('Pragma: no-cache');
 header('Expires: 0');
 
+require_once dirname(__DIR__) . '/config/database.php';
+
 $data = json_decode(file_get_contents('php://input'), true);
 
 if (!isset($data['username']) || !isset($data['action']) || !isset($data['shift'])) {
@@ -15,64 +17,66 @@ if (!isset($data['username']) || !isset($data['action']) || !isset($data['shift'
     exit;
 }
 
-$username = preg_replace('/[^a-zA-Z0-9_]/', '', $data['username']);
+$username = trim($data['username']);
 $action = $data['action']; // 'add', 'edit', 'delete'
 $shift = $data['shift'];
-$shiftIndex = isset($data['shiftIndex']) ? intval($data['shiftIndex']) : null;
+$shiftId = isset($data['shiftId']) ? intval($data['shiftId']) : null;
 
-$calendarDir = dirname(__DIR__) . '/calendar';
-$globalShiftsFile = $calendarDir . '/global_shifts.json';
-$logFile = $calendarDir . '/changes_log.txt';
+try {
+    $pdo = getDB();
 
-// Create calendar directory if it doesn't exist
-if (!is_dir($calendarDir)) {
-    mkdir($calendarDir, 0755, true);
+    // Get user ID
+    $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ? LIMIT 1");
+    $stmt->execute([$username]);
+    $user = $stmt->fetch();
+
+    if (!$user) {
+        echo json_encode(['success' => false, 'message' => 'Utente non trovato']);
+        exit;
+    }
+
+    $userId = $user['id'];
+
+    switch ($action) {
+        case 'add':
+            $stmt = $pdo->prepare("INSERT INTO global_shifts (assigned_to_user_id, date, start_time, end_time, notes, status, created_by_user_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([
+                $userId,
+                $shift['date'],
+                $shift['start_time'],
+                $shift['end_time'],
+                $shift['notes'],
+                $shift['status'],
+                $userId
+            ]);
+            break;
+
+        case 'edit':
+            if ($shiftId) {
+                $stmt = $pdo->prepare("UPDATE global_shifts SET date = ?, start_time = ?, end_time = ?, notes = ?, status = ? WHERE id = ? AND assigned_to_user_id = ?");
+                $stmt->execute([
+                    $shift['date'],
+                    $shift['start_time'],
+                    $shift['end_time'],
+                    $shift['notes'],
+                    $shift['status'],
+                    $shiftId,
+                    $userId
+                ]);
+            }
+            break;
+
+        case 'delete':
+            if ($shiftId) {
+                $stmt = $pdo->prepare("DELETE FROM global_shifts WHERE id = ? AND assigned_to_user_id = ?");
+                $stmt->execute([$shiftId, $userId]);
+            }
+            break;
+    }
+
+    echo json_encode(['success' => true]);
+} catch (PDOException $e) {
+    error_log("Global shift save error: " . $e->getMessage());
+    echo json_encode(['success' => false, 'message' => 'Errore durante il salvataggio']);
 }
-
-// Load existing shifts
-$shifts = [];
-if (file_exists($globalShiftsFile)) {
-    $shifts = json_decode(file_get_contents($globalShiftsFile), true);
-} else {
-    file_put_contents($globalShiftsFile, json_encode([], JSON_PRETTY_PRINT));
-}
-
-// Perform action
-$logMessage = '';
-$timestamp = date('Y-m-d H:i:s');
-
-switch ($action) {
-    case 'add':
-        // Add unique ID to shift
-        $shift['id'] = uniqid('shift_', true);
-        $shifts[] = $shift;
-        $logMessage = "[{$timestamp}] {$username} ha aggiunto un turno per {$shift['assignedTo']} in data {$shift['date']} dalle {$shift['start']} alle {$shift['end']}";
-        break;
-    
-    case 'edit':
-        if ($shiftIndex !== null && isset($shifts[$shiftIndex])) {
-            $oldShift = $shifts[$shiftIndex];
-            $shifts[$shiftIndex] = array_merge($oldShift, $shift);
-            $logMessage = "[{$timestamp}] {$username} ha modificato il turno di {$oldShift['assignedTo']} del {$oldShift['date']} ({$oldShift['start']}-{$oldShift['end']}) → nuovo: {$shift['assignedTo']} {$shift['date']} ({$shift['start']}-{$shift['end']})";
-        }
-        break;
-    
-    case 'delete':
-        if ($shiftIndex !== null && isset($shifts[$shiftIndex])) {
-            $deletedShift = $shifts[$shiftIndex];
-            array_splice($shifts, $shiftIndex, 1);
-            $logMessage = "[{$timestamp}] {$username} ha eliminato il turno di {$deletedShift['assignedTo']} del {$deletedShift['date']} ({$deletedShift['start']}-{$deletedShift['end']})";
-        }
-        break;
-}
-
-// Save shifts
-file_put_contents($globalShiftsFile, json_encode($shifts, JSON_PRETTY_PRINT));
-
-// Write to log
-if ($logMessage) {
-    file_put_contents($logFile, $logMessage . "\n", FILE_APPEND);
-}
-
-echo json_encode(['success' => true]);
 ?>
